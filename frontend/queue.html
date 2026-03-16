@@ -3,27 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Queue — yt-Z</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <title>yt-Z — Queue</title>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
-<body data-page="queue">
+<body>
 
-  <nav>
-    <a href="/" class="nav-logo">yt-Z</a>
-    <ul class="nav-links">
-      <li><a href="/queue" class="active">queue <span id="queue-badge" style="color:var(--accent);display:none"></span></a></li>
-      <li><a href="/history">history</a></li>
-      <li><a href="/settings">settings</a></li>
-    </ul>
+  <nav class="nav">
+    <a href="/index.html" class="nav-logo">yt-Z</a>
+    <div class="nav-links">
+      <a href="/index.html">Download</a>
+      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
+      <a href="/history.html">History</a>
+      <a href="/settings.html">Settings</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </nav>
 
   <main class="page">
-    <p class="breadcrumb"><a href="/">yt-Z</a> / queue</p>
-    <div id="queue-page">
-      <div class="empty">Loading…</div>
+    <div class="card-header" style="padding:0 0 1rem">
+      <h2 class="section-title" style="margin:0">Active Queue</h2>
+      <button class="btn btn-secondary btn-sm" onclick="renderQueue()">Refresh</button>
     </div>
+    <div id="job-list"></div>
   </main>
 
-  <script src="/assets/app.js"></script>
+  <script src="./assets/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNav();
+      startPolling(renderQueue);
+    });
+
+    async function renderQueue() {
+      const list = document.getElementById('job-list');
+      let jobs;
+      try {
+        jobs = await api('/queue');
+      } catch (_) { return; }
+
+      updateNavBadge();
+
+      if (!jobs.length) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <h3>Queue is empty</h3>
+            <p>Go to <a href="/index.html">Download</a> to add a video.</p>
+          </div>`;
+        stopPolling();
+        return;
+      }
+
+      list.innerHTML = jobs.map(j => jobCard(j)).join('');
+
+      // Stop polling when everything is in a terminal state
+      const allDone = jobs.every(j => ['done','error','cancelled'].includes(j.status));
+      if (allDone) stopPolling();
+    }
+
+    function jobCard(j) {
+      const pct = Math.round(j.progress || 0);
+      const fillClass = j.status === 'done' ? 'done' : j.status === 'error' ? 'error' : '';
+      const title = j.title || '';
+      const displayUrl = j.url.length > 60 ? j.url.slice(0, 60) + '…' : j.url;
+
+      const cancelBtn = j.status === 'queued'
+        ? `<button class="btn btn-danger btn-sm" onclick="cancelJob('${j.id}')">Cancel</button>`
+        : '';
+
+      const filename = j.filepath
+        ? j.filepath.split(/[\\/]/).pop()
+        : (j.title || 'download') + '.' + j.format;
+      const saveBtn = j.status === 'done'
+        ? `<button class="btn btn-primary btn-sm" onclick="downloadFile('${escHtml(j.id)}','${escHtml(filename)}',this)">⬇ Save to PC</button>`
+        : '';
+
+      const errorLine = j.error_msg
+        ? `<p class="error-msg mt-1" style="font-size:.8rem">${escHtml(j.error_msg)}</p>`
+        : '';
+
+      return `
+        <div class="job-card" id="job-${j.id}">
+          <div class="job-header">
+            <div class="job-title">
+              ${title ? escHtml(title) : ''}
+              <span class="url">${escHtml(displayUrl)}</span>
+            </div>
+            <div class="job-meta">
+              <span class="status status-${j.status}">${j.status}</span>
+              <span class="text-muted" style="font-size:.8rem">${j.format} / ${j.quality}</span>
+              ${cancelBtn}
+            </div>
+          </div>
+          ${j.status === 'running' || j.status === 'done' || j.status === 'error' ? `
+            <div class="progress-bar">
+              <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+            </div>
+            <div class="job-footer">
+              <span class="job-progress-text">${pct}%</span>
+              ${saveBtn}
+            </div>` : ''}
+          ${errorLine}
+        </div>`;
+    }
+
+    async function cancelJob(jobId) {
+      try {
+        await api(`/queue/${jobId}`, { method: 'DELETE' });
+        toast('Job cancelled', 'info');
+        renderQueue();
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
 </body>
 </html>

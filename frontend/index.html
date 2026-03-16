@@ -3,70 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>yt-Z</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <title>yt-Z — Download</title>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
-<body data-page="download">
+<body>
 
-  <nav>
-    <a href="/" class="nav-logo">yt-Z</a>
-    <ul class="nav-links">
-      <li><a href="/queue">queue <span id="queue-badge" style="color:var(--accent);display:none"></span></a></li>
-      <li><a href="/history">history</a></li>
-      <li><a href="/settings">settings</a></li>
-    </ul>
+  <nav class="nav">
+    <a href="/index.html" class="nav-logo">yt-Z</a>
+    <div class="nav-links">
+      <a href="/index.html">Download</a>
+      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
+      <a href="/history.html">History</a>
+      <a href="/settings.html">Settings</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </nav>
 
   <main class="page">
+    <div class="card">
+      <!-- URL input -->
+      <div class="form-group">
+        <label for="url-input">Video or Playlist URL</label>
+        <input type="url" id="url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+      </div>
 
-    <!-- Download form -->
-    <form id="dl-form">
-      <input
-        type="url"
-        id="url-input"
-        placeholder="Paste a video URL…"
-        autocomplete="off"
-        autocorrect="off"
-        spellcheck="false"
-        autofocus
-      >
-      <p id="url-error" class="field-error"></p>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap">
-        <div>
-          <label for="fmt-select" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Format</label>
+      <!-- Format / Quality / Options row -->
+      <div class="input-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label for="fmt-select">Format</label>
           <select id="fmt-select">
-            <option value="mp4">MP4</option>
-            <option value="mkv">MKV</option>
-            <option value="mp3">MP3</option>
-            <option value="m4a">M4A</option>
-            <option value="best">Best</option>
+            <option value="mp4">MP4 (video)</option>
+            <option value="webm">WebM (video)</option>
+            <option value="mkv">MKV (video)</option>
+            <option value="mp3">MP3 (audio)</option>
+            <option value="m4a">M4A (audio)</option>
+            <option value="best">Best (auto)</option>
           </select>
         </div>
-        <div>
-          <label for="quality-select" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Quality</label>
-          <select id="quality-select">
+        <div class="form-group" style="margin-bottom:0">
+          <label for="qual-select">Quality</label>
+          <select id="qual-select">
             <option value="best">Best</option>
-            <option value="2160">4K</option>
-            <option value="1080">1080p</option>
-            <option value="720">720p</option>
-            <option value="480">480p</option>
+            <option value="4k">4K</option>
+            <option value="1440p">1440p</option>
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+            <option value="480p">480p</option>
             <option value="audio">Audio only</option>
           </select>
         </div>
-        <div style="align-self:flex-end">
-          <button type="submit" id="submit-btn" class="btn">Download</button>
+        <button id="preview-btn" class="btn btn-secondary" onclick="fetchInfo()">Preview</button>
+      </div>
+
+      <label class="toggle-row">
+        <input type="checkbox" id="playlist-toggle">
+        Download as playlist
+      </label>
+
+      <!-- Info preview -->
+      <div id="info-card" class="info-card card mt-2">
+        <img id="info-thumb" class="info-thumb" src="" alt="">
+        <div class="info-details">
+          <h3 id="info-title"></h3>
+          <p id="info-uploader"></p>
+          <p id="info-duration" class="text-muted"></p>
         </div>
       </div>
-    </form>
 
-    <!-- Active queue section -->
-    <div id="queue-section" style="margin-top:40px">
-      <div id="queue-list"></div>
+      <p id="url-error" class="error-msg hidden"></p>
+
+      <div class="flex-row mt-2">
+        <button id="download-btn" class="btn btn-primary" onclick="submitDownload()">
+          Download
+        </button>
+        <span id="submit-msg" class="text-muted hidden" style="font-size:.85rem"></span>
+      </div>
     </div>
-
   </main>
 
-  <script src="/assets/app.js"></script>
+  <script src="./assets/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNav();
+      autoPasteUrl('url-input');
+      syncQualityOptions();
+    });
+
+    // Keep quality options relevant to format
+    document.getElementById('fmt-select').addEventListener('change', syncQualityOptions);
+
+    function syncQualityOptions() {
+      const fmt = document.getElementById('fmt-select').value;
+      const qual = document.getElementById('qual-select');
+      const isAudio = fmt === 'mp3' || fmt === 'm4a';
+      [...qual.options].forEach(o => {
+        const audioOnly = o.value === 'audio';
+        const videoOnly = ['4k','1440p','1080p','720p','480p'].includes(o.value);
+        o.hidden = isAudio ? videoOnly : audioOnly;
+      });
+      if (isAudio) qual.value = 'audio';
+      else if (qual.value === 'audio') qual.value = 'best';
+    }
+
+    async function fetchInfo() {
+      const url = document.getElementById('url-input').value.trim();
+      const errEl = document.getElementById('url-error');
+      const infoCard = document.getElementById('info-card');
+      const btn = document.getElementById('preview-btn');
+
+      errEl.classList.add('hidden');
+      infoCard.classList.remove('visible');
+
+      if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+      try {
+        const info = await api(`/info?url=${encodeURIComponent(url)}`);
+        document.getElementById('info-title').textContent = info.title || 'Unknown title';
+        document.getElementById('info-uploader').textContent = info.uploader || '';
+        document.getElementById('info-duration').textContent = info.duration ? fmtDuration(info.duration) : '';
+        const thumb = document.getElementById('info-thumb');
+        if (info.thumbnail) { thumb.src = info.thumbnail; thumb.style.display = ''; }
+        else thumb.style.display = 'none';
+        infoCard.classList.add('visible');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Preview';
+      }
+    }
+
+    async function submitDownload() {
+      const url = document.getElementById('url-input').value.trim();
+      const errEl = document.getElementById('url-error');
+      const btn = document.getElementById('download-btn');
+      const msg = document.getElementById('submit-msg');
+
+      errEl.classList.add('hidden');
+      msg.classList.add('hidden');
+      if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Queuing…';
+      try {
+        await api('/download', {
+          method: 'POST',
+          body: JSON.stringify({
+            url,
+            format: document.getElementById('fmt-select').value,
+            quality: document.getElementById('qual-select').value,
+            playlist: document.getElementById('playlist-toggle').checked,
+          }),
+        });
+        toast('Added to queue!', 'success');
+        document.getElementById('url-input').value = '';
+        document.getElementById('info-card').classList.remove('visible');
+        updateNavBadge();
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download';
+      }
+    }
+  </script>
 </body>
 </html>

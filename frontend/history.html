@@ -3,43 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>History — yt-Z</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <title>yt-Z — History</title>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
-<body data-page="history">
+<body>
 
-  <nav>
-    <a href="/" class="nav-logo">yt-Z</a>
-    <ul class="nav-links">
-      <li><a href="/queue">queue <span id="queue-badge" style="color:var(--accent);display:none"></span></a></li>
-      <li><a href="/history" class="active">history</a></li>
-      <li><a href="/settings">settings</a></li>
-    </ul>
+  <nav class="nav">
+    <a href="/index.html" class="nav-logo">yt-Z</a>
+    <div class="nav-links">
+      <a href="/index.html">Download</a>
+      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
+      <a href="/history.html">History</a>
+      <a href="/settings.html">Settings</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </nav>
 
   <main class="page">
-    <p class="breadcrumb"><a href="/">yt-Z</a> / history</p>
-
-    <table class="hist-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Format</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody id="hist-body">
-        <tr>
-          <td colspan="3" style="text-align:center;padding:40px 0;color:var(--muted)">Loading…</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div style="margin-top:28px;text-align:center">
-      <button id="load-more" class="btn-ghost" style="display:none">Load more</button>
+    <h2 class="section-title">Download History</h2>
+    <div class="card">
+      <div id="history-body">
+        <div class="empty-state"><h3>Loading…</h3></div>
+      </div>
     </div>
+    <div class="pagination" id="pagination"></div>
   </main>
 
-  <script src="/assets/app.js"></script>
+  <script src="./assets/app.js"></script>
+  <script>
+    let currentPage = 1;
+    const PER_PAGE = 20;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNav();
+      loadHistory(1);
+    });
+
+    async function loadHistory(page) {
+      currentPage = page;
+      const body = document.getElementById('history-body');
+      body.innerHTML = '<div class="empty-state"><h3>Loading…</h3></div>';
+      try {
+        const rows = await api(`/downloads?page=${page}&per_page=${PER_PAGE}`);
+        renderHistory(rows);
+      } catch (e) {
+        body.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${escHtml(e.message)}</p></div>`;
+      }
+    }
+
+    function renderHistory(rows) {
+      const body = document.getElementById('history-body');
+      const pagination = document.getElementById('pagination');
+
+      if (!rows.length && currentPage === 1) {
+        body.innerHTML = `
+          <div class="empty-state">
+            <h3>No downloads yet</h3>
+            <p>Completed downloads appear here.</p>
+          </div>`;
+        pagination.innerHTML = '';
+        return;
+      }
+
+      if (!rows.length) {
+        loadHistory(currentPage - 1);
+        return;
+      }
+
+      body.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Title / URL</th>
+                <th>Format</th>
+                <th>Quality</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const fname = r.filepath
+                  ? r.filepath.split(/[\\/]/).pop()
+                  : (r.title || 'download') + '.' + r.format;
+                const saveBtn = r.status === 'done'
+                  ? `<button class="btn btn-secondary btn-sm" onclick="downloadFile('${escHtml(r.id)}','${escHtml(fname)}',this)">⬇ Save</button>`
+                  : '';
+                return `
+                <tr>
+                  <td>
+                    <div class="td-title">${r.title ? escHtml(r.title) : '—'}</div>
+                    <div class="td-url">${escHtml(r.url)}</div>
+                  </td>
+                  <td>${r.format}</td>
+                  <td>${r.quality}</td>
+                  <td><span class="status status-${r.status}">${r.status}</span></td>
+                  <td style="white-space:nowrap;color:var(--muted);font-size:.82rem">${fmtDate(r.finished_at || r.created_at)}</td>
+                  <td>${saveBtn}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      // Simple prev / next pagination
+      pagination.innerHTML = `
+        ${currentPage > 1
+          ? `<button class="btn btn-secondary btn-sm" onclick="loadHistory(${currentPage - 1})">← Prev</button>`
+          : ''}
+        <span>Page ${currentPage}</span>
+        ${rows.length === PER_PAGE
+          ? `<button class="btn btn-secondary btn-sm" onclick="loadHistory(${currentPage + 1})">Next →</button>`
+          : ''}`;
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
 </body>
 </html>

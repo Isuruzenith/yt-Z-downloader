@@ -1,22 +1,21 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
+from pathlib import Path
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-    download_path: str = "/downloads"
-    cookies_path: str = "/cookies"
-    data_path: str = "/data"
+    secret_key: str = "change-me-in-production"
+    download_root: Path = Path("/downloads")
+    cookies_root: Path = Path("/cookies")
+    data_root: Path = Path("/data")
     max_queue_size: int = 50
     max_retries: int = 3
     default_format: str = "mp4"
-    api_key: str = ""
-    host: str = "0.0.0.0"
-    port: int = 8080
+    ytdlp_channel: str = "nightly"
+    js_runtime: str = "deno"
+    port: int = 8000
+
+    class Config:
+        env_file = ".env"
 
 
 settings = Settings()

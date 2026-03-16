@@ -3,73 +3,167 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings — yt-Z</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <title>yt-Z — Settings</title>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
-<body data-page="settings">
+<body>
 
-  <nav>
-    <a href="/" class="nav-logo">yt-Z</a>
-    <ul class="nav-links">
-      <li><a href="/queue">queue <span id="queue-badge" style="color:var(--accent);display:none"></span></a></li>
-      <li><a href="/history">history</a></li>
-      <li><a href="/settings" class="active">settings</a></li>
-    </ul>
+  <nav class="nav">
+    <a href="/index.html" class="nav-logo">yt-Z</a>
+    <div class="nav-links">
+      <a href="/index.html">Download</a>
+      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
+      <a href="/history.html">History</a>
+      <a href="/settings.html">Settings</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </nav>
 
   <main class="page">
-    <p class="breadcrumb"><a href="/">yt-Z</a> / settings</p>
 
-    <!-- Cookies -->
-    <div class="setting-block">
-      <span class="setting-label">Cookies</span>
-      <hr class="setting-divider">
-      <p id="cookie-status" style="font-size:13px;color:var(--muted);margin:0 0 12px 0">Checking…</p>
-      <div
-        id="upload-zone"
-        class="upload-zone"
-        role="button"
-        tabindex="0"
-        aria-label="Upload cookies.json"
-      >
-        Drop <code style="font-family:monospace;font-size:13px">cookies.json</code> here or click to browse
+    <!-- Cookie Upload -->
+    <div class="card">
+      <h2 class="card-title" style="margin-bottom:1rem">Cookie File</h2>
+      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
+        Upload a Netscape-format <code style="color:var(--text);background:var(--surface-2);padding:1px 5px;border-radius:4px">cookies.txt</code>
+        exported from your browser (e.g. via the <em>Get cookies.txt LOCALLY</em> extension).
+        Required for age-restricted or members-only content.
+      </p>
+
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('cookie-file').click()">
+        <input type="file" id="cookie-file" accept=".txt" onchange="handleFileSelect(this.files[0])">
+        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v13M8 7l4-4 4 4"/>
+        </svg>
+        <p id="drop-label">Drop cookies.txt here or click to browse</p>
       </div>
-      <input type="file" id="cookie-file" accept=".json" style="display:none">
-      <p id="upload-status" style="font-size:13px;margin-top:8px;min-height:18px"></p>
+
+      <div id="upload-status" class="hidden mt-1"></div>
+      <button id="upload-btn" class="btn btn-primary mt-2 hidden" onclick="uploadCookies()">Upload Cookies</button>
     </div>
 
-    <!-- Storage -->
-    <div class="setting-block">
-      <span class="setting-label">Storage path</span>
-      <hr class="setting-divider">
-      <code id="storage-path" style="font-size:13px;color:var(--muted)">—</code>
-      <p style="font-size:12px;color:var(--muted);margin:6px 0 0 0">
-        Set via <code style="font-size:11px">DOWNLOAD_PATH</code> environment variable.
+    <!-- YouTube Bookmarklet -->
+    <div class="card mt-2">
+      <h2 class="card-title" style="margin-bottom:.5rem">YouTube Cookie Sync</h2>
+      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
+        Drag the button below to your bookmarks bar. Then, while logged into YouTube, click the
+        bookmarklet to sync your cookies instantly — no manual export needed.
       </p>
+
+      <div class="flex-row" style="flex-wrap:wrap;gap:.75rem">
+        <a id="bookmarklet-link" class="btn btn-secondary" href="#" title="Drag to bookmarks bar">
+          🔖 yt-Z Cookie Sync
+        </a>
+        <button class="btn btn-secondary" onclick="copyBookmarklet()">Copy as JS</button>
+      </div>
+
+      <p class="text-muted mt-1" style="font-size:.8rem">
+        ⚠ Bookmarklet only captures cookies visible to JavaScript (not HttpOnly). For full coverage, use the file upload above.
+      </p>
+
+      <div class="code-block mt-2" id="bookmarklet-code"></div>
     </div>
 
-    <!-- API key -->
-    <div class="setting-block">
-      <span class="setting-label">API Key</span>
-      <hr class="setting-divider">
-      <p style="font-size:13px;color:var(--muted);margin:0 0 10px 0">
-        Required if <code style="font-size:11px">API_KEY</code> is set on the server.
-        Stored in browser <code style="font-size:11px">localStorage</code>.
-      </p>
-      <div style="display:flex;gap:10px;align-items:center">
-        <input
-          type="text"
-          id="api-key-input"
-          placeholder="Leave empty to disable"
-          style="max-width:320px"
-          autocomplete="off"
-        >
-        <button id="save-key-btn" class="btn">Save</button>
-      </div>
+    <!-- Account -->
+    <div class="card mt-2">
+      <h2 class="card-title" style="margin-bottom:1rem">Account</h2>
+      <button class="btn btn-danger" onclick="logout()">Sign Out</button>
     </div>
 
   </main>
 
-  <script src="/assets/app.js"></script>
+  <script src="./assets/app.js"></script>
+  <script>
+    let _selectedFile = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNav();
+      buildBookmarklet();
+      setupDropZone();
+    });
+
+    // ── Drag & drop ────────────────────────────────────────────────────────────
+    function setupDropZone() {
+      const zone = document.getElementById('drop-zone');
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelect(file);
+      });
+    }
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      _selectedFile = file;
+      document.getElementById('drop-label').textContent = `Selected: ${file.name}`;
+      document.getElementById('upload-btn').classList.remove('hidden');
+      document.getElementById('upload-status').classList.add('hidden');
+    }
+
+    async function uploadCookies() {
+      if (!_selectedFile) return;
+      const btn = document.getElementById('upload-btn');
+      const status = document.getElementById('upload-status');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Uploading…';
+      const fd = new FormData();
+      fd.append('file', _selectedFile);
+      try {
+        await apiUpload('/settings/cookies/upload', fd);
+        status.innerHTML = '<span style="color:var(--success)">✓ Cookies uploaded successfully</span>';
+        status.classList.remove('hidden');
+        toast('Cookies uploaded!', 'success');
+        _selectedFile = null;
+        btn.classList.add('hidden');
+        document.getElementById('drop-label').textContent = 'Drop cookies.txt here or click to browse';
+      } catch (e) {
+        status.innerHTML = `<span class="error-msg">${escHtml(e.message)}</span>`;
+        status.classList.remove('hidden');
+        toast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload Cookies';
+      }
+    }
+
+    // ── Bookmarklet ────────────────────────────────────────────────────────────
+    function buildBookmarklet() {
+      const origin = location.origin;
+      const code = `(function(){` +
+        `var API='${origin}/api/settings/cookies/youtube';` +
+        `var T=localStorage.getItem('yt_z_token');` +
+        `var C=document.cookie.split(';').map(function(c){` +
+          `var p=c.trim().split('=');` +
+          `return{name:p[0],value:p.slice(1).join('='),domain:'.youtube.com',path:'/',secure:true};` +
+        `});` +
+        `fetch(API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+T},` +
+        `body:JSON.stringify({cookies:C})})` +
+        `.then(function(r){return r.json()})` +
+        `.then(function(d){alert(d.message||'Done!')})` +
+        `.catch(function(e){alert('Error: '+e)});` +
+        `})();`;
+
+      document.getElementById('bookmarklet-link').href = 'javascript:' + code;
+      document.getElementById('bookmarklet-code').textContent = 'javascript:' + code;
+    }
+
+    async function copyBookmarklet() {
+      const code = document.getElementById('bookmarklet-code').textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        toast('Copied to clipboard!', 'success');
+      } catch (_) {
+        toast('Copy failed — select the code manually.', 'error');
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
 </body>
 </html>

@@ -1,28 +1,32 @@
 FROM python:3.11-slim
 
-# System deps: ffmpeg for media processing, curl for healthcheck
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg curl \
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Deno for YouTube JS signature extraction
+RUN curl -fsSL https://deno.land/install.sh | sh
+ENV DENO_INSTALL="/root/.deno"
+ENV PATH="${DENO_INSTALL}/bin:${PATH}"
 
 WORKDIR /app
 
-# Install Python deps first (cached layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY api/      ./api/
+# Install yt-dlp nightly (fixes YouTube changes faster than stable)
+RUN pip install --no-cache-dir --pre "yt-dlp[default]"
+
+COPY api/ ./api/
 COPY frontend/ ./frontend/
 
-# Runtime volume mount points
-RUN mkdir -p /downloads /cookies /data /logs
+# Create volume mount points
+RUN mkdir -p /downloads /cookies /data
 
-EXPOSE 8080
+ENV PYTHONPATH=/app
+EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-CMD ["python", "-m", "uvicorn", "api.main:app", \
-     "--host", "0.0.0.0", "--port", "8080", \
-     "--proxy-headers", "--forwarded-allow-ips=*"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

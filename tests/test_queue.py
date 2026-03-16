@@ -1,71 +1,48 @@
-import asyncio
-import os
-
-from api.models import DownloadRequest, Format, Quality, Status
+import pytest
+from unittest.mock import patch, AsyncMock
 
 
-def _make_queue(tmp_path):
-    os.environ["DATA_PATH"] = str(tmp_path)
-    from api.history import HistoryStore
-    from api.queue import JobQueue
-    return JobQueue(HistoryStore())
+@pytest.mark.asyncio
+async def test_enqueue_job(client, auth_headers):
+    with patch("api.downloader.run_download", new_callable=AsyncMock) as mock_dl:
+        mock_dl.return_value = "/downloads/1/job1/video.mp4"
+        r = await client.post(
+            "/api/download",
+            json={"url": "https://youtube.com/watch?v=test", "format": "mp4", "quality": "720p"},
+            headers=auth_headers,
+        )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] in ("queued", "running", "done")
+    assert data["url"] == "https://youtube.com/watch?v=test"
+    assert data["format"] == "mp4"
+    assert data["quality"] == "720p"
 
 
-async def _started(q):
-    """Start the queue inside a running event loop so asyncio.Queue binds correctly."""
-    q.start()
-    return q
+@pytest.mark.asyncio
+async def test_get_queue(client, auth_headers):
+    r = await client.get("/api/queue", headers=auth_headers)
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
 
 
-def test_enqueue_creates_queued_job(tmp_path):
-    async def run():
-        q = await _started(_make_queue(tmp_path))
-        req = DownloadRequest(url="https://example.com", format=Format.mp4, quality=Quality.best)
-        job = await q.enqueue(req)
-        assert job.status == Status.queued
-        assert job.id in {j.id for j in q.all_jobs()}
-        assert job.url == "https://example.com"
-        await q.stop()
-
-    asyncio.run(run())
+@pytest.mark.asyncio
+async def test_cancel_nonexistent_job(client, auth_headers):
+    r = await client.delete("/api/queue/nonexistent-id", headers=auth_headers)
+    assert r.status_code == 404
 
 
-def test_enqueue_multiple_jobs(tmp_path):
-    async def run():
-        q = await _started(_make_queue(tmp_path))
-        req = DownloadRequest(url="https://example.com", format=Format.mp4, quality=Quality.best)
-        job1 = await q.enqueue(req)
-        job2 = await q.enqueue(req)
-        assert job1.id != job2.id
-        assert len(q.all_jobs()) == 2
-        await q.stop()
-
-    asyncio.run(run())
+@pytest.mark.asyncio
+async def test_download_requires_auth(client):
+    r = await client.post(
+        "/api/download",
+        json={"url": "https://youtube.com/watch?v=test"},
+    )
+    assert r.status_code == 401
 
 
-def test_cancel_queued_job(tmp_path):
-    async def run():
-        q = await _started(_make_queue(tmp_path))
-        req = DownloadRequest(url="https://example.com", format=Format.mp4, quality=Quality.best)
-        job = await q.enqueue(req)
-        result = q.cancel(job.id)
-        assert result is True
-        assert q.get_job(job.id).status == Status.cancelled
-        await q.stop()
-
-    asyncio.run(run())
-
-
-def test_cancel_nonexistent_returns_false(tmp_path):
-    q = _make_queue(tmp_path)
-    assert q.cancel("no-such-id") is False
-
-
-def test_get_job_returns_none_for_unknown(tmp_path):
-    q = _make_queue(tmp_path)
-    assert q.get_job("unknown") is None
-
-
-def test_all_jobs_empty_on_init(tmp_path):
-    q = _make_queue(tmp_path)
-    assert q.all_jobs() == []
+@pytest.mark.asyncio
+async def test_history_endpoint(client, auth_headers):
+    r = await client.get("/api/downloads", headers=auth_headers)
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)

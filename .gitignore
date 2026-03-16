@@ -4,32 +4,35 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-
-# Virtualenv
+*.so
 .venv/
 venv/
 env/
 
-# Environment
+# Dist / build
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Env
 .env
 
-# Runtime data (never commit)
-downloads/
-data/
-logs/
-cookies/
-
-# OS
-.DS_Store
-Thumbs.db
+# Data volumes (never commit)
+/downloads/
+/cookies/
+/data/
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+developer_plan.md
