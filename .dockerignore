@@ -1,0 +1,40 @@
+# Version control
+.git/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Runtime data — these are volume-mounted at runtime
+downloads/
+data/
+cookies/
+logs/
+
+# Secrets
+.env
+
+# Dev / docs
+*.md
+tests/
+.github/
+docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
