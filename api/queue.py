@@ -13,11 +13,14 @@ from .history import HistoryStore
 class JobQueue:
     def __init__(self, history: HistoryStore) -> None:
         self._jobs: dict[str, DownloadJob] = {}
-        self._queue: asyncio.Queue[str] = asyncio.Queue()
+        self._queue: asyncio.Queue[str]     # created in start() inside the running loop
         self._history = history
         self._worker_task: Optional[asyncio.Task] = None
 
     def start(self) -> None:
+        # Create the queue here so it binds to the current event loop
+        self._jobs = {}
+        self._queue = asyncio.Queue()
         self._worker_task = asyncio.create_task(self._worker())
 
     async def stop(self) -> None:
@@ -41,7 +44,7 @@ class JobQueue:
             format=req.format,
             quality=req.quality,
             status=Status.queued,
-            created_at=datetime.datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.timezone.utc),
         )
         self._jobs[job.id] = job
         await self._queue.put(job.id)
@@ -81,7 +84,7 @@ class JobQueue:
                 job.path = path
                 job.status = Status.done
                 job.progress = 100.0
-                job.completed_at = datetime.datetime.utcnow()
+                job.completed_at = datetime.datetime.now(datetime.timezone.utc)
                 await self._history.append(job)
             except Exception as exc:
                 job.status = Status.failed
