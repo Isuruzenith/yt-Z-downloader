@@ -14,6 +14,7 @@
       <a href="/index.html">Download</a>
       <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
       <a href="/history.html">History</a>
+      <a href="/library.html">Library</a>
       <a href="/settings.html">Settings</a>
     </div>
     <div class="nav-spacer"></div>
@@ -41,6 +42,27 @@
 
       <div id="upload-status" class="hidden mt-1"></div>
       <button id="upload-btn" class="btn btn-primary mt-2 hidden" onclick="uploadCookies()">Upload Cookies</button>
+    </div>
+
+    
+    <!-- Presets -->
+    <div class="card mt-2">
+      <h2 class="card-title" style="margin-bottom:1rem">Presets</h2>
+      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
+        Manage your download configuration presets.
+      </p>
+      
+      <div id="presets-list" style="margin-bottom: 1rem;">
+        <!-- Presets injected here -->
+      </div>
+      
+      <div class="flex-row" style="gap:.75rem">
+        
+        <button class="btn btn-secondary" onclick="exportPresets()">Export JSON</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">Import JSON</button>
+        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importPresets(this.files[0])">
+
+      </div>
     </div>
 
     <!-- YouTube Bookmarklet -->
@@ -81,6 +103,7 @@
       setupNav();
       buildBookmarklet();
       setupDropZone();
+      loadPresets();
     });
 
     // ── Drag & drop ────────────────────────────────────────────────────────────
@@ -158,6 +181,83 @@
         toast('Copied to clipboard!', 'success');
       } catch (_) {
         toast('Copy failed — select the code manually.', 'error');
+      }
+    }
+
+    
+    async function loadPresets() {
+      try {
+        const presets = await api('/presets');
+        const list = document.getElementById('presets-list');
+        if (presets.length === 0) {
+          list.innerHTML = '<p class="text-muted" style="font-size:0.9rem">No presets found.</p>';
+          return;
+        }
+        list.innerHTML = presets.map(p => `
+          <div class="flex-row" style="justify-content:space-between; padding:0.5rem; background:var(--surface-2); border-radius:4px; margin-bottom:0.5rem;">
+            <span>${escHtml(p.name)}</span>
+            <div class="flex-row" style="gap:0.5rem;">
+              <button class="btn btn-ghost btn-sm" onclick="setDefaultPreset(${p.id})">Set Default</button>
+              <button class="btn btn-danger btn-sm" onclick="deletePreset(${p.id})">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        toast('Failed to load presets', 'error');
+      }
+    }
+
+    async function deletePreset(id) {
+      if (!confirm('Delete this preset?')) return;
+      try {
+        await api(`/presets/${id}`, {method: 'DELETE'});
+        toast('Preset deleted', 'success');
+        loadPresets();
+      } catch (e) {
+        toast('Failed to delete preset', 'error');
+      }
+    }
+    
+    async function setDefaultPreset(id) {
+      try {
+        await api(`/presets/default/${id}`, {method: 'POST'});
+        toast('Default preset updated', 'success');
+      } catch (e) {
+        toast('Failed to set default preset', 'error');
+      }
+    }
+
+    async function exportPresets() {
+      try {
+        const presets = await api('/presets/export');
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href",     dataStr     );
+        dlAnchorElem.setAttribute("download", "yt-z-presets.json");
+        dlAnchorElem.click();
+      } catch (e) {
+        toast('Failed to export presets', 'error');
+      }
+    }
+
+    
+    async function importPresets(file) {
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const presets = JSON.parse(text);
+        if (!Array.isArray(presets)) throw new Error("Invalid format");
+        
+        const res = await api('/presets/import', {
+          method: 'POST',
+          body: JSON.stringify(presets)
+        });
+        toast(`Imported ${res.imported} presets`, 'success');
+        loadPresets();
+      } catch (e) {
+        toast('Failed to import presets: ' + e.message, 'error');
+      } finally {
+        document.getElementById('import-file').value = '';
       }
     }
 

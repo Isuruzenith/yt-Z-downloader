@@ -14,6 +14,7 @@
       <a href="/index.html">Download</a>
       <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
       <a href="/history.html">History</a>
+      <a href="/library.html">Library</a>
       <a href="/settings.html">Settings</a>
     </div>
     <div class="nav-spacer"></div>
@@ -30,35 +31,65 @@
 
   <script src="./assets/app.js"></script>
   <script>
+    let _jobs = [];
+    let _ws = null;
+
     document.addEventListener('DOMContentLoaded', () => {
       setupNav();
-      startPolling(renderQueue);
+      initQueue();
     });
 
-    async function renderQueue() {
-      const list = document.getElementById('job-list');
-      let jobs;
+    async function initQueue() {
       try {
-        jobs = await api('/queue');
-      } catch (_) { return; }
+        _jobs = await api('/queue');
+        renderQueue();
+        connectWebSocket();
+      } catch (e) {
+        document.getElementById('job-list').innerHTML = `<div class="empty-state"><h3>Error loading queue</h3><p>${escHtml(e.message)}</p></div>`;
+      }
+    }
 
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/ws/progress?token=${getToken()}`;
+      
+      _ws = new WebSocket(wsUrl);
+      
+      _ws.onmessage = (event) => {
+        try {
+          const updatedJob = JSON.parse(event.data);
+          const index = _jobs.findIndex(j => j.id === updatedJob.id);
+          if (index !== -1) {
+            _jobs[index] = { ..._jobs[index], ...updatedJob };
+          } else {
+            _jobs.push(updatedJob);
+          }
+          renderQueue();
+        } catch (e) {
+          console.error("WebSocket message error", e);
+        }
+      };
+
+      _ws.onclose = () => {
+        console.log("WebSocket disconnected. Reconnecting in 3s...");
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function renderQueue() {
+      const list = document.getElementById('job-list');
       updateNavBadge();
 
-      if (!jobs.length) {
+      if (!_jobs.length) {
         list.innerHTML = `
           <div class="empty-state">
             <h3>Queue is empty</h3>
             <p>Go to <a href="/index.html">Download</a> to add a video.</p>
           </div>`;
-        stopPolling();
         return;
       }
 
-      list.innerHTML = jobs.map(j => jobCard(j)).join('');
-
-      // Stop polling when everything is in a terminal state
-      const allDone = jobs.every(j => ['done','error','cancelled'].includes(j.status));
-      if (allDone) stopPolling();
+      list.innerHTML = _jobs.map(j => jobCard(j)).join('');
     }
 
     function jobCard(j) {
@@ -72,7 +103,7 @@
         : '';
 
       const filename = j.filepath
-        ? j.filepath.split(/[\\/]/).pop()
+        ? j.filepath.split(/[\/]/).pop()
         : (j.title || 'download') + '.' + j.format;
       const saveBtn = j.status === 'done'
         ? `<button class="btn btn-primary btn-sm" onclick="downloadFile('${escHtml(j.id)}','${escHtml(filename)}',this)">⬇ Save to PC</button>`
@@ -111,7 +142,7 @@
       try {
         await api(`/queue/${jobId}`, { method: 'DELETE' });
         toast('Job cancelled', 'info');
-        renderQueue();
+        // WebSocket will push the update, but we can optimistically update
       } catch (e) {
         toast(e.message, 'error');
       }

@@ -14,6 +14,7 @@
       <a href="/index.html">Download</a>
       <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
       <a href="/history.html">History</a>
+      <a href="/library.html">Library</a>
       <a href="/settings.html">Settings</a>
     </div>
     <div class="nav-spacer"></div>
@@ -21,7 +22,21 @@
   </nav>
 
   <main class="page">
-    <div class="card">
+
+    <!-- Presets -->
+    <div class="card mt-2" id="presets-card">
+      <div class="flex-row" style="gap: 1rem; align-items: center; justify-content: space-between;">
+        <div class="form-group" style="margin-bottom:0; flex:1;">
+          <label for="preset-select">Preset</label>
+          <select id="preset-select" onchange="applyPreset()">
+            <option value="">-- Custom --</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" onclick="savePreset()" style="margin-top: 1.25rem;">Save as Preset</button>
+      </div>
+    </div>
+
+    <div class="card mt-2">
       <!-- URL input -->
       <div class="form-group">
         <label for="url-input">Video or Playlist URL</label>
@@ -61,6 +76,47 @@
         Download as playlist
       </label>
 
+
+      <!-- Advanced Options -->
+      <details class="mt-2" style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; color:var(--primary); font-size:0.9rem; font-weight:600;">Advanced Options</summary>
+        <div class="input-row mt-1" style="flex-wrap: wrap; gap: 1rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="embed-subs"> Embed Subtitles
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="embed-thumb"> Embed Thumbnail
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="embed-meta"> Embed Metadata
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="split-chapters"> Split Chapters
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="write-info"> Save Info JSON
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
+            <input type="checkbox" id="remux"> Remux output
+          </label>
+        </div>
+        
+        <div class="input-row mt-1" style="gap: 1rem;">
+          <div class="form-group" style="flex:1;">
+            <label for="subs-langs">Subtitle Languages (comma separated, e.g., en,fr)</label>
+            <input type="text" id="subs-langs" placeholder="en">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label for="sponsorblock">SponsorBlock</label>
+            <select id="sponsorblock">
+              <option value="">Disabled</option>
+              <option value="mark">Mark Sponsors</option>
+              <option value="remove">Remove Sponsors</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
       <!-- Info preview -->
       <div id="info-card" class="info-card card mt-2">
         <img id="info-thumb" class="info-thumb" src="" alt="">
@@ -84,13 +140,15 @@
 
   <script src="./assets/app.js"></script>
   <script>
+    let _presets = [];
+
     document.addEventListener('DOMContentLoaded', () => {
       setupNav();
       autoPasteUrl('url-input');
       syncQualityOptions();
+      loadPresets();
     });
 
-    // Keep quality options relevant to format
     document.getElementById('fmt-select').addEventListener('change', syncQualityOptions);
 
     function syncQualityOptions() {
@@ -104,6 +162,115 @@
       });
       if (isAudio) qual.value = 'audio';
       else if (qual.value === 'audio') qual.value = 'best';
+    }
+
+    async function loadPresets() {
+      try {
+        _presets = await api('/presets');
+        const sel = document.getElementById('preset-select');
+        sel.innerHTML = '<option value="">-- Custom --</option>';
+        _presets.forEach(p => {
+          sel.innerHTML += `<option value="${p.id}">${escHtml(p.name)}</option>`;
+        });
+      } catch (e) {
+        console.error("Failed to load presets", e);
+      }
+    }
+
+    function applyPreset() {
+      const id = document.getElementById('preset-select').value;
+      if (!id) return;
+      const p = _presets.find(x => x.id == id);
+      if (!p || !p.options) return;
+      const o = p.options;
+      
+      document.getElementById('fmt-select').value = o.format || 'mp4';
+      syncQualityOptions();
+      document.getElementById('qual-select').value = o.quality || 'best';
+      if(document.getElementById('playlist-toggle')) document.getElementById('playlist-toggle').checked = !!o.playlist;
+      
+      if(document.getElementById('embed-subs')) document.getElementById('embed-subs').checked = !!o.embed_subs;
+      if(document.getElementById('embed-thumb')) document.getElementById('embed-thumb').checked = !!o.embed_thumbnail;
+      if(document.getElementById('embed-meta')) document.getElementById('embed-meta').checked = !!o.embed_metadata;
+      if(document.getElementById('split-chapters')) document.getElementById('split-chapters').checked = !!o.split_chapters;
+      if(document.getElementById('write-info')) document.getElementById('write-info').checked = !!o.write_info_json;
+      if(document.getElementById('remux')) document.getElementById('remux').checked = !!o.remux;
+      if(document.getElementById('subs-langs')) document.getElementById('subs-langs').value = (o.subtitles_langs || []).join(',');
+      if(document.getElementById('sponsorblock')) document.getElementById('sponsorblock').value = o.sponsorblock || '';
+    }
+
+    function getOptions() {
+      const format = document.getElementById('fmt-select')?.value || 'mp4';
+      const quality = document.getElementById('qual-select')?.value || 'best';
+      const playlist = document.getElementById('playlist-toggle')?.checked || false;
+      const embed_subs = document.getElementById('embed-subs')?.checked || false;
+      const embed_thumbnail = document.getElementById('embed-thumb')?.checked || false;
+      const embed_metadata = document.getElementById('embed-meta')?.checked || false;
+      const split_chapters = document.getElementById('split-chapters')?.checked || false;
+      const write_info_json = document.getElementById('write-info')?.checked || false;
+      const remux = document.getElementById('remux')?.checked || false;
+      
+      const subs_langs_el = document.getElementById('subs-langs');
+      const subs_langs_str = subs_langs_el ? subs_langs_el.value.trim() : '';
+      const subtitles_langs = subs_langs_str ? subs_langs_str.split(',').map(s => s.trim()) : null;
+      
+      const sponsorblock_el = document.getElementById('sponsorblock');
+      const sponsorblock = sponsorblock_el ? (sponsorblock_el.value || null) : null;
+
+      return {
+        format, quality, playlist,
+        embed_subs, embed_thumbnail, embed_metadata, split_chapters, write_info_json, remux,
+        subtitles_langs, sponsorblock
+      };
+    }
+
+    async function savePreset() {
+      const name = prompt("Enter a name for this preset:");
+      if (!name) return;
+      
+      const options = getOptions();
+      try {
+        await api('/presets', {
+          method: 'POST',
+          body: JSON.stringify({ name, options })
+        });
+        toast('Preset saved!', 'success');
+        await loadPresets();
+        const newP = _presets.find(x => x.name === name);
+        if (newP) {
+          document.getElementById('preset-select').value = newP.id;
+        }
+      } catch(e) {
+        toast('Failed to save preset: ' + e.message, 'error');
+      }
+    }
+
+    async function submitDownload() {
+      const url = document.getElementById('url-input').value.trim();
+      const errEl = document.getElementById('url-error');
+      const btn = document.getElementById('download-btn');
+      
+      errEl.classList.add('hidden');
+      if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Queuing';
+      try {
+        const body = { url, ...getOptions() };
+        await api('/download', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        toast('Added to queue!', 'success');
+        document.getElementById('url-input').value = '';
+        updateNavBadge();
+      } catch (e) {
+        errEl.textContent = e.message || 'Unknown error';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download';
+      }
     }
 
     async function fetchInfo() {
@@ -129,7 +296,7 @@
         else thumb.style.display = 'none';
         infoCard.classList.add('visible');
       } catch (e) {
-        errEl.textContent = e.message;
+        errEl.textContent = e.message || 'Failed to fetch info';
         errEl.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -137,39 +304,8 @@
       }
     }
 
-    async function submitDownload() {
-      const url = document.getElementById('url-input').value.trim();
-      const errEl = document.getElementById('url-error');
-      const btn = document.getElementById('download-btn');
-      const msg = document.getElementById('submit-msg');
-
-      errEl.classList.add('hidden');
-      msg.classList.add('hidden');
-      if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
-
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Queuing…';
-      try {
-        await api('/download', {
-          method: 'POST',
-          body: JSON.stringify({
-            url,
-            format: document.getElementById('fmt-select').value,
-            quality: document.getElementById('qual-select').value,
-            playlist: document.getElementById('playlist-toggle').checked,
-          }),
-        });
-        toast('Added to queue!', 'success');
-        document.getElementById('url-input').value = '';
-        document.getElementById('info-card').classList.remove('visible');
-        updateNavBadge();
-      } catch (e) {
-        errEl.textContent = e.message;
-        errEl.classList.remove('hidden');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Download';
-      }
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
   </script>
 </body>

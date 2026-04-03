@@ -23,6 +23,23 @@ class DownloadRequest(BaseModel):
     quality: Literal["best", "4k", "1440p", "1080p", "720p", "480p", "audio"] = "best"
     playlist: bool = False
 
+    subtitles_langs: list[str] | None = None
+    embed_subs: bool = False
+    write_thumbnail: bool = False
+    embed_thumbnail: bool = False
+    write_info_json: bool = False
+    embed_metadata: bool = False
+    extract_audio: bool = False
+    remux: bool = False
+    split_chapters: bool = False
+
+    proxy_url: str | None = None
+    rate_limit: int | None = None
+    retries: int | None = None
+    user_agent: str | None = None
+    sponsorblock: Literal["mark", "remove"] | None = None
+    power_mode_args: list[str] | None = None
+
 
 class JobResponse(BaseModel):
     id: str

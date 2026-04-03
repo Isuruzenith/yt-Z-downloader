@@ -3,27 +3,8 @@ from pathlib import Path
 from typing import Callable
 import yt_dlp
 from api.config import settings
-
-# ── Format string builders ────────────────────────────────────────────────────
-
-FORMAT_MAP = {
-    # (format_key, quality_key) → yt-dlp format selector string
-    ("mp4",  "best"):   "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
-    ("mp4",  "1080p"):  "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]",
-    ("mp4",  "720p"):   "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]",
-    ("mp4",  "480p"):   "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]",
-    ("mp4",  "4k"):     "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/best",
-    ("mp4",  "1440p"):  "bestvideo[height<=1440][ext=mp4]+bestaudio[ext=m4a]/best",
-    ("webm", "best"):   "bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo+bestaudio",
-    ("mp3",  "audio"):  "bestaudio/best",
-    ("m4a",  "audio"):  "bestaudio[ext=m4a]/bestaudio/best",
-}
-
-
-def build_format_selector(fmt: str, quality: str) -> str:
-    key = (fmt.lower(), quality.lower())
-    return FORMAT_MAP.get(key, "bestvideo+bestaudio/best")
-
+from api.schemas import DownloadRequest
+from api.options import build_ydl_opts
 
 # ── Info extraction (metadata preview) ───────────────────────────────────────
 
@@ -50,39 +31,28 @@ async def extract_info(url: str, cookie_file: Path | None = None) -> dict:
 
 # ── Download execution ───────────────────────────────────────────────────────
 
-def _build_ydl_opts(
-    job_id: str,
-    user_id: int,
-    fmt: str,
-    quality: str,
-    playlist: bool,
-    cookie_file: Path | None,
-    progress_cb: Callable[[dict], None],
-) -> dict:
-    output_dir = settings.download_root / str(user_id)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    outtmpl = str(output_dir / job_id / "%(title)s.%(ext)s")
+class JobLogger:
+    def __init__(self, log_file: Path):
+        self.log_file = log_file
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        # clear file if exists
+        if self.log_file.exists():
+            self.log_file.write_text("")
 
-    opts: dict = {
-        "format": build_format_selector(fmt, quality),
-        "outtmpl": outtmpl,
-        "quiet": True,
-        "no_warnings": True,
-        "progress_hooks": [progress_cb],
-        "retries": settings.max_retries,
-        "sleep_interval": 1,
-        "max_sleep_interval": 5,
-        "noplaylist": not playlist,
-        "merge_output_format": fmt if fmt in ("mp4", "mkv", "webm") else None,
-        **({"postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": fmt}]}
-           if fmt in ("mp3", "m4a") else {}),
-    }
+    def _write(self, msg: str):
+        with open(self.log_file, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
 
-    if cookie_file and cookie_file.exists():
-        opts["cookiefile"] = str(cookie_file)
+    def debug(self, msg: str):
+        self._write(msg)
 
-    return opts
+    def warning(self, msg: str):
+        self._write(f"WARNING: {msg}")
+
+    def error(self, msg: str):
+        self._write(f"ERROR: {msg}")
+
 
 
 def _download_sync(opts: dict, url: str) -> str | None:
@@ -104,16 +74,15 @@ def _download_sync(opts: dict, url: str) -> str | None:
 
 
 async def run_download(
+    req: DownloadRequest,
     job_id: str,
     user_id: int,
-    url: str,
-    fmt: str,
-    quality: str,
-    playlist: bool,
     cookie_file: Path | None,
     progress_cb: Callable[[dict], None],
 ) -> str | None:
     """Non-blocking download. Returns filepath on completion."""
-    opts = _build_ydl_opts(job_id, user_id, fmt, quality, playlist, cookie_file, progress_cb)
+    opts = build_ydl_opts(req, job_id, user_id, cookie_file, progress_cb)
+    log_file = settings.download_root / str(user_id) / job_id / 'job.log'
+    opts['logger'] = JobLogger(log_file)
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _download_sync, opts, url)
+    return await loop.run_in_executor(None, _download_sync, opts, req.url)

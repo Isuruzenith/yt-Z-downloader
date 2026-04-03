@@ -54,10 +54,7 @@ async def start_download(
     try:
         job_id = await queue.enqueue(
             user_id=current_user.id,
-            url=body.url,
-            fmt=body.format,
-            quality=body.quality,
-            playlist=body.playlist,
+            req=body,
             cookie_file=cookie_file if cookie_file.exists() else None,
         )
     except RuntimeError as e:
@@ -156,3 +153,34 @@ async def sync_youtube_cookies(
         await f.writelines(lines)
 
     return {"message": "YouTube cookies synced"}
+
+
+@router.get("/queue/{job_id}/log")
+async def get_log(
+    job_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    log_path = settings.download_root / str(current_user.id) / job_id / "job.log"
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail="Log not found")
+    
+    # Returning as text
+    return FileResponse(log_path, media_type="text/plain")
+
+
+@router.get("/queue/{job_id}/info")
+async def get_info_json(
+    job_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    job_dir = settings.download_root / str(current_user.id) / job_id
+    if not job_dir.exists():
+        raise HTTPException(status_code=404, detail="Job directory not found")
+    
+    # Find the .info.json file
+    for p in job_dir.glob("*.info.json"):
+        return FileResponse(p, media_type="application/json")
+    
+    raise HTTPException(status_code=404, detail="Info JSON not found")

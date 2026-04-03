@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     default_format: str = "mp4"
     ytdlp_channel: str = "nightly"
     js_runtime: str = "deno"
+    enable_power_mode: bool = False
+    enable_sponsorblock: bool = False
+    worker_count: int = 1
+    max_download_age_days: int = 0
     port: int = 8000
 
     class Config:

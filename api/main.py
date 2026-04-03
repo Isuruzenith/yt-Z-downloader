@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.db import init_db
 from api.queue import start_worker
-from api import users, download_routes, history
+from api import users, download_routes, history, presets, ws, library
 
 
 @asynccontextmanager
@@ -26,6 +26,9 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(download_routes.router)
 app.include_router(history.router)
+app.include_router(presets.router)
+app.include_router(ws.router)
+app.include_router(library.router)
 
 
 @app.get("/health", tags=["ops"])

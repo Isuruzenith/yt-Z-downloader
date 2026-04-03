@@ -1,3 +1,4 @@
+import pytest_asyncio
 import os
 import asyncio
 import tempfile
@@ -19,7 +20,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest_asyncio.fixture(autouse=True, scope="session")
 async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -28,13 +29,13 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def auth_headers(client):
     await client.post("/auth/register", json={"email": "test@example.com", "password": "testpass123"})
     res = await client.post("/auth/login", json={"email": "test@example.com", "password": "testpass123"})

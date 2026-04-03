@@ -14,6 +14,7 @@
       <a href="/index.html">Download</a>
       <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
       <a href="/history.html">History</a>
+      <a href="/library.html">Library</a>
       <a href="/settings.html">Settings</a>
     </div>
     <div class="nav-spacer"></div>
@@ -29,6 +30,23 @@
     </div>
     <div class="pagination" id="pagination"></div>
   </main>
+
+  <!-- Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modal-title">Log</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modal-content" style="background:var(--surface-2); padding:1rem; border-radius:4px; max-height:400px; overflow-y:auto; font-size:0.85rem;"></pre>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; text-align: right;">
+        <button class="btn btn-secondary" onclick="copyModalContent()">Copy</button>
+      </div>
+    </div>
+  </div>
+
 
   <script src="./assets/app.js"></script>
   <script>
@@ -89,9 +107,13 @@
                 const fname = r.filepath
                   ? r.filepath.split(/[\\/]/).pop()
                   : (r.title || 'download') + '.' + r.format;
+                
                 const saveBtn = r.status === 'done'
                   ? `<button class="btn btn-secondary btn-sm" onclick="downloadFile('${escHtml(r.id)}','${escHtml(fname)}',this)">⬇ Save</button>`
                   : '';
+                const logBtn = `<button class="btn btn-ghost btn-sm" onclick="viewLog('${r.id}')">Log</button>`;
+                const infoBtn = `<button class="btn btn-ghost btn-sm" onclick="viewInfo('${r.id}')">JSON</button>`;
+                
                 return `
                 <tr>
                   <td>
@@ -100,10 +122,14 @@
                   </td>
                   <td>${r.format}</td>
                   <td>${r.quality}</td>
-                  <td><span class="status status-${r.status}">${r.status}</span></td>
+                  <td>
+                    <span class="status status-${r.status}">${r.status}</span>
+                    <div style="margin-top:0.25rem; font-size:0.8rem; color:var(--danger)">${r.error_msg ? escHtml(r.error_msg) : ''}</div>
+                  </td>
                   <td style="white-space:nowrap;color:var(--muted);font-size:.82rem">${fmtDate(r.finished_at || r.created_at)}</td>
-                  <td>${saveBtn}</td>
+                  <td style="display:flex; gap:0.25rem;">${saveBtn}${logBtn}${infoBtn}</td>
                 </tr>`;
+
               }).join('')}
             </tbody>
           </table>
@@ -118,6 +144,49 @@
         ${rows.length === PER_PAGE
           ? `<button class="btn btn-secondary btn-sm" onclick="loadHistory(${currentPage + 1})">Next →</button>`
           : ''}`;
+    }
+
+    
+    function openModal(title, content) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-content').textContent = content;
+      document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+    
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+    }
+    
+    async function copyModalContent() {
+      const content = document.getElementById('modal-content').textContent;
+      try {
+        await navigator.clipboard.writeText(content);
+        toast('Copied!', 'success');
+      } catch (e) {
+        toast('Failed to copy', 'error');
+      }
+    }
+
+    async function viewLog(id) {
+      try {
+        const res = await fetch(`/api/queue/${id}/log`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('Log not available');
+        const text = await res.text();
+        openModal('Job Log', text);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    }
+
+    async function viewInfo(id) {
+      try {
+        const res = await fetch(`/api/queue/${id}/info`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('Info JSON not available');
+        const data = await res.json();
+        openModal('Info JSON', JSON.stringify(data, null, 2));
+      } catch (e) {
+        toast(e.message, 'error');
+      }
     }
 
     function escHtml(s) {

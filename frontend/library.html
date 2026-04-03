@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yt-Z — Library</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="/index.html" class="nav-logo">yt-Z</a>
+    <div class="nav-links">
+      <a href="/index.html">Download</a>
+      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
+      <a href="/history.html">History</a>
+      <a href="/library.html">Library</a>
+      <a href="/settings.html">Settings</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </nav>
+
+  <main class="page">
+    <h2 class="section-title">My Library</h2>
+    <div class="card">
+      <div class="flex-row" style="margin-bottom: 1rem; justify-content: space-between; gap: 1rem;">
+        <input type="text" id="filter-input" placeholder="Filter by title or uploader..." oninput="renderLibrary()" style="flex: 1;">
+        <select id="sort-select" onchange="renderLibrary()">
+          <option value="date_desc">Newest First</option>
+          <option value="date_asc">Oldest First</option>
+          <option value="size_desc">Largest First</option>
+          <option value="size_asc">Smallest First</option>
+          <option value="title">Title (A-Z)</option>
+        </select>
+      </div>
+      <div id="library-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+        <div class="empty-state" style="grid-column: 1 / -1;"><h3>Loading…</h3></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./assets/app.js"></script>
+  <script>
+    let _library = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNav();
+      loadLibrary();
+    });
+
+    async function loadLibrary() {
+      try {
+        _library = await api('/library');
+        renderLibrary();
+      } catch (e) {
+        document.getElementById('library-grid').innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><h3>Error</h3><p>${escHtml(e.message)}</p></div>`;
+      }
+    }
+
+    function renderLibrary() {
+      const grid = document.getElementById('library-grid');
+      const filterStr = document.getElementById('filter-input').value.toLowerCase();
+      const sortVal = document.getElementById('sort-select').value;
+
+      let filtered = _library.filter(item => {
+        const title = (item.title || '').toLowerCase();
+        const uploader = (item.uploader || '').toLowerCase();
+        return title.includes(filterStr) || uploader.includes(filterStr);
+      });
+
+      filtered.sort((a, b) => {
+        if (sortVal === 'date_desc') return new Date(b.date) - new Date(a.date);
+        if (sortVal === 'date_asc') return new Date(a.date) - new Date(b.date);
+        if (sortVal === 'size_desc') return b.size - a.size;
+        if (sortVal === 'size_asc') return a.size - b.size;
+        if (sortVal === 'title') return (a.title || '').localeCompare(b.title || '');
+        return 0;
+      });
+
+      if (!filtered.length) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <h3>No files found</h3>
+            <p>Your library is empty or no files match the filter.</p>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const title = item.title || 'Unknown Video';
+        const uploader = item.uploader || 'Unknown';
+        const duration = item.duration ? fmtDuration(item.duration) : '';
+        const sizeMb = item.size ? (item.size / 1024 / 1024).toFixed(1) + ' MB' : '';
+        const thumbUrl = item.has_thumb ? `/api/library/${item.id}/thumb?token=${getToken()}` : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100%25" height="100%25"%3E%3Crect width="100%25" height="100%25" fill="%23333"/%3E%3C/svg%3E';
+
+        return `
+          <div style="background:var(--surface-2); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000;">
+              <img src="${thumbUrl}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;" alt="Thumbnail">
+              ${duration ? `<span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 4px; border-radius: 4px; font-size: 0.75rem;">${duration}</span>` : ''}
+            </div>
+            <div style="padding: 0.75rem; display: flex; flex-direction: column; flex: 1;">
+              <h4 style="margin: 0 0 0.25rem; font-size: 1rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escHtml(title)}</h4>
+              <span style="color: var(--muted); font-size: 0.85rem; margin-bottom: 0.5rem;">${escHtml(uploader)}</span>
+              <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 0.8rem;">
+                <span>${sizeMb}</span>
+                <a href="/api/queue/${item.id}/file?token=${getToken()}" download class="btn btn-primary btn-sm" style="text-decoration: none;">Download</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

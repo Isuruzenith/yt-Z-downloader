@@ -1,223 +1,111 @@
 # yt-Z Downloader
 
-A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a URL, pick a format, download — no terminal required. Runs entirely in Docker.
-
-![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
+**yt-Z Downloader** is a self-hosted, multi-user web application that wraps the powerful [yt-dlp](https://github.com/yt-dlp/yt-dlp) tool with a clean, responsive, browser-based UI. It eliminates the need for terminal access when downloading media from 1,000+ supported sites, running seamlessly inside a single Docker container.
 
 ---
 
-## Features
+## 🌟 Key Features
 
-- **1000+ sites** — every source yt-dlp supports
-- **Format & quality presets** — MP4 / MKV / WEBM / MP3 / M4A, 4K → 480p → audio-only
-- **Async queue** — jobs run sequentially in the background; live %-progress polling
-- **Save to PC** — one-click browser download of the finished file
-- **Cookie management** — upload a Netscape `cookies.txt` or use the YouTube bookmarklet to sync cookies from your browser with one click
-- **Multi-user** — JWT auth, every user's files and cookies are fully isolated
-- **Download history** — paginated SQLite-backed history with re-download links
-- **Docker-first** — single container, named volumes, health check, < 2 min to running
+- **Zero-Terminal Experience:** A modern, mobile-friendly interface for enqueueing, monitoring, and downloading media.
+- **Multi-User Isolation:** Each user has an isolated queue, isolated download history, and isolated cookie files to prevent overlap.
+- **Real-Time WebSockets:** See live progress, ETA, and job statuses without refreshing the page.
+- **Multi-Worker Execution:** Spin up concurrent background workers tailored to your host's capabilities.
+- **Smart Presets:** Configure and save specific formats, qualities, embed metadata options, and custom arguments to re-use instantly.
+- **YouTube Cookie Sync:** Includes a one-click Javascript Bookmarklet to pull cookies straight from your browser for age-restricted content.
+- **Library Management:** View all downloaded media complete with extracted thumbnails, metadata JSON parsing, and powerful sorting tools.
+- **Auto-Cleanup Task:** Automatically deletes stale files after a customizable number of days.
+- **SponsorBlock Support:** Opt-in to automatically mark or remove sponsored segments.
+- **Resilient Background Queue:** Powered by SQLite & asyncio. Queue withstands crashes and retries failed downloads with exponential backoff.
 
 ---
 
-## Quick Start
+## 🚀 Quickstart Guide
 
-**1. Clone and configure**
+yt-Z is explicitly built for frictionless self-hosting.
+
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Isuruzenith/yt-Z-downloader.git
+git clone https://github.com/your-username/yt-Z-downloader.git
 cd yt-Z-downloader
+```
 
+### 2. Configure Environment
+
+Copy the example environment file and generate a secure secret key:
+
+```bash
 cp .env.example .env
 ```
+*(Open `.env` and set `SECRET_KEY` to a random long string to secure your JWT sessions!)*
 
-Open `.env` and set a real secret key:
+### 3. Deploy with Docker Compose
 
-```bash
-# Generate one:
-openssl rand -hex 32
-```
-
-**2. Start**
+Run the provided `docker-compose.yml`:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build
+docker compose up -d
 ```
 
-**3. Open**
-
-```
-http://localhost:8000
-```
-
-Register an account → paste a URL → download.
-Swagger API docs: `http://localhost:8000/docs`
+The app is now running on your server on **Port 8000**! Navigate to `http://localhost:8000` to create your first account and log in. 
 
 ---
 
-## Configuration
+## ⚙️ Configuration Reference
 
-All options are set via `.env` (no code changes needed):
+All settings are customized via the `.env` file mounted by Docker Compose. You do not need to rebuild the container to change these options.
 
 | Variable | Default | Description |
 |---|---|---|
-| `SECRET_KEY` | *(required)* | JWT signing key — change before first run |
-| `DOWNLOAD_ROOT` | `/downloads` | Volume path for downloaded files |
-| `COOKIES_ROOT` | `/cookies` | Volume path for per-user cookie files |
-| `DATA_ROOT` | `/data` | Volume path for SQLite database |
-| `MAX_QUEUE_SIZE` | `50` | Maximum queued jobs |
-| `MAX_RETRIES` | `3` | yt-dlp auto-retry attempts per job |
-| `DEFAULT_FORMAT` | `mp4` | Default output format |
-| `JS_RUNTIME` | `deno` | `deno` or `node` — required for YouTube sig extraction |
-| `PORT` | `8000` | Listening port |
+| `SECRET_KEY` | *(required)* | 32+ character random string used for signing authentication JWT tokens. |
+| `PORT` | `8000` | The port the FastAPI server binds to. |
+| `DOWNLOAD_ROOT` | `/downloads` | Internal container path where media files are saved. Mapped to your host. |
+| `COOKIES_ROOT` | `/cookies` | Internal path where isolated `cookies.txt` files reside. |
+| `DATA_ROOT` | `/data` | Internal path where the `yt_z.db` SQLite database is maintained. |
+| `MAX_QUEUE_SIZE` | `50` | Maximum number of unstarted jobs an individual user can have. |
+| `MAX_RETRIES` | `3` | yt-dlp internal auto-retry attempts upon a download fragment failure. |
+| `WORKER_COUNT` | `1` | Number of concurrent async download workers to spawn. |
+| `MAX_DOWNLOAD_AGE_DAYS` | `0` | If `> 0`, automatically deletes media files older than this many days via a 12h cron task. |
+| `JS_RUNTIME` | `deno` | JS execution backend (`deno` or `node`) for extracting YouTube signatures. Deno is included in our container. |
+| `ENABLE_SPONSORBLOCK`| `False` | Set to `True` to allow users to opt-in to SponsorBlock (mark/remove) via the Advanced Options menu. |
+| `ENABLE_POWER_MODE` | `False` | Set to `True` to enable raw `yt-dlp` arguments passthrough (filtered by strict allowlist). |
 
 ---
 
-## Cookie Setup
+## 🍪 Bookmarklet Setup
 
-Cookies are required for age-restricted, members-only, and some geo-blocked content.
+For sites like YouTube that demand active cookies for high-quality or age-restricted formats, downloading `cookies.txt` manually can be tedious. We built a bookmarklet to fix this!
 
-### Option A — YouTube Bookmarklet (recommended)
+1. Open your yt-Z Downloader **Settings** page.
+2. Find the **"🔖 yt-Z Cookie Sync"** button.
+3. **Click and Drag** that button directly into your browser's Bookmarks/Favorites Bar.
+4. Navigate to `https://www.youtube.com/` and ensure you are logged into your account.
+5. Click the newly created bookmarklet in your bar. A prompt will confirm that your cookies have successfully synced back to your yt-Z server!
 
-1. Go to **Settings → Cookie Sync** in the app
-2. Drag **"yt-Z Cookie Sync"** to your browser's bookmarks bar
-3. Navigate to `youtube.com` while logged in
-4. Click the bookmarklet → cookies sync automatically
-
-> The bookmarklet only captures cookies accessible via JavaScript. HttpOnly cookies (used for full auth) require the file upload method below.
-
-### Option B — File Upload
-
-Export `cookies.txt` in Netscape format using a browser extension such as [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc), then upload it on the **Settings** page.
+*Note: For HttpOnly cookies or complex sessions, you can still manually upload a `cookies.txt` via the Settings menu.*
 
 ---
 
-## API Reference
+## 📖 API Documentation
 
-All endpoints except `/auth/*` and `/health` require `Authorization: Bearer <token>`.
+yt-Z Downloader leverages FastAPI to expose a meticulously documented REST architecture under the hood. 
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/auth/register` | Create account → returns JWT |
-| `POST` | `/auth/login` | Authenticate → returns JWT |
-| `GET` | `/api/info?url=` | Fetch video metadata and available formats |
-| `POST` | `/api/download` | Enqueue a download job |
-| `GET` | `/api/queue` | List your jobs with live progress |
-| `DELETE` | `/api/queue/{id}` | Cancel a queued job |
-| `GET` | `/api/queue/{id}/file` | Download the finished file to browser |
-| `GET` | `/api/downloads` | Paginated history (terminal-state jobs) |
-| `POST` | `/api/settings/cookies/upload` | Upload a `cookies.txt` file |
-| `POST` | `/api/settings/cookies/youtube` | Bookmarklet cookie sync |
-| `GET` | `/health` | Container health check |
-| `GET` | `/docs` | Interactive Swagger UI |
+Once your container is running, navigate to:
+
+> **[http://localhost:8000/docs](http://localhost:8000/docs)**
+
+This opens an interactive **Swagger UI** where you can:
+1. Examine schemas and endpoints (`GET /api/queue`, `POST /api/download`, `GET /api/library`, etc.).
+2. Authenticate directly inside Swagger using the `Authorize` button.
+3. Test programmatic API calls and observe payload responses directly from your browser.
 
 ---
 
-## Tech Stack
+### Built With:
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [SQLite](https://www.sqlite.org/index.html) (SQLAlchemy/Aiosqlite)
+- [FFmpeg](https://ffmpeg.org/)
+- HTML/CSS Vanilla JavaScript (Zero-Build Frontend)
 
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.11 · FastAPI · Uvicorn |
-| Downloader | yt-dlp (nightly) · ffmpeg |
-| JS runtime | Deno (YouTube signature extraction) |
-| Database | SQLite · SQLAlchemy (async) · aiosqlite |
-| Auth | JWT (python-jose) · bcrypt (passlib) |
-| Frontend | Vanilla HTML · CSS · JS — no build step |
-| Container | Docker · Compose |
-| CI | GitHub Actions · ruff · pytest |
-
----
-
-## Local Development
-
-```bash
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-cp .env.example .env               # set DATA_ROOT=./data (writable local path)
-
-uvicorn api.main:app --reload --port 8000
-```
-
-**Run tests:**
-
-```bash
-pytest tests/ -v --asyncio-mode=auto
-```
-
-**Lint:**
-
-```bash
-ruff check api/ tests/
-```
-
----
-
-## Project Structure
-
-```
-yt-Z-downloader/
-├── api/
-│   ├── main.py              # App factory, CORS, StaticFiles (mounted last)
-│   ├── config.py            # Pydantic Settings — .env loader
-│   ├── db.py                # Async SQLAlchemy engine, init_db()
-│   ├── models.py            # User + Job ORM tables
-│   ├── schemas.py           # Pydantic request/response models
-│   ├── auth.py              # JWT + bcrypt, get_current_user dependency
-│   ├── users.py             # /auth/register · /auth/login
-│   ├── download_routes.py   # Download, queue, file serve, cookie endpoints
-│   ├── queue.py             # asyncio.Queue · single worker · _jobs dict
-│   ├── downloader.py        # yt-dlp Python API wrapper (run_in_executor)
-│   └── history.py           # /api/downloads paginated history
-├── frontend/
-│   ├── index.html           # URL input, metadata preview, submit
-│   ├── queue.html           # Live queue, progress bars, Save to PC
-│   ├── history.html         # Paginated history table
-│   ├── settings.html        # Cookie upload, bookmarklet
-│   ├── login.html           # Register / login
-│   └── assets/
-│       ├── app.js           # Shared helpers: api(), toast(), polling, downloadFile()
-│       └── style.css        # Dark theme CSS
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── tests/
-│   ├── conftest.py
-│   ├── test_auth.py
-│   └── test_queue.py
-├── .env.example
-├── requirements.txt
-└── requirements-dev.txt
-```
-
----
-
-## Roadmap
-
-- [ ] WebSocket progress (replace polling)
-- [ ] Concurrent multi-worker mode
-- [ ] Custom yt-dlp args per download
-- [ ] Thumbnail embedding + local media browser
-- [ ] PO token / `--impersonate` toggle for YouTube bot detection
-- [ ] Admin panel
-
----
-
-## Contributing
-
-Pull requests are welcome. Please open an issue first for significant changes.
-
-1. Fork and create a feature branch
-2. Run `ruff check api/ tests/` and `pytest tests/ -v --asyncio-mode=auto` before pushing
-3. Open a PR against `developer`
-
----
-
-## License
-
-[MIT](LICENSE)
+*Designed for seamless home server operation and media archival.*

@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
@@ -10,7 +10,7 @@ services:
       - cookies:/cookies
       - data:/data
     env_file:
-      - ../.env
+      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
