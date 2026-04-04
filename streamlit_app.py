@@ -8,6 +8,8 @@ import asyncio
 import threading
 import uuid
 import time
+import json
+import requests
 from datetime import datetime
 from pathlib import Path
 
@@ -320,15 +322,87 @@ def init_state():
             "playlist": False,
             "embed_metadata": False,
             "embed_thumbnail": False,
+            "write_thumbnail": False,
             "write_subs": False,
             "write_auto_subs": False,
             "subtitles_langs": [],
+            "embed_subs": False,
             "extract_audio": False,
+            "audio_format": None,
+            "audio_quality": "192",
             "sponsorblock": None,
+            "sponsorblock_categories": [],
             "rate_limit": None,
             "proxy_url": None,
+            "outtmpl": None,
+            "restrict_filenames": False,
+            "windows_filenames": False,
+            "no_part_files": False,
+            "geo_bypass": False,
+            "cookies_from_browser": None,
+            "force_ipv4": False,
+            "force_ipv6": False,
+            "ignore_errors": False,
+            "split_chapters": False,
+            "remux": False,
+            "normalize_audio": False,
+            "write_info_json": False,
+            "write_description": False,
+            "write_comments": False,
+            "convert_video": None,
+            "convert_subs": None,
+            "playlist_items": None,
+            "playlist_start": None,
+            "playlist_end": None,
+            "playlist_reverse": False,
+            "playlist_random": False,
+            "date_before": None,
+            "date_after": None,
+            "min_duration": None,
+            "max_duration": None,
+            "min_views": None,
+            "max_views": None,
+            "match_title": None,
+            "reject_title": None,
+            "break_match_filters": False,
+            "skip_livestreams": False,
+            "age_limit": None,
+            "concurrent_fragments": None,
+            "fragment_retries": None,
+            "skip_unavailable_fragments": False,
+            "buffersize": None,
+            "http_chunk_size": None,
+            "download_archive": None,
+            "overwrites": None,
+            "keep_fragments": False,
+            "sleep_requests": None,
+            "sleep_interval": None,
+            "downloader": None,
+            "downloader_args": None,
+            "source_address": None,
+            "geo_bypass_country": None,
+            "socket_timeout": None,
+            "user_agent": None,
+            "custom_headers": {},
+            "username": None,
+            "password": None,
+            "twofactor": None,
+            "netrc": False,
+            "no_check_certificates": False,
+            "prefer_insecure": False,
+            "format_sort": None,
+            "prefer_free_formats": False,
+            "check_formats": False,
+            "video_codec": None,
+            "audio_codec": None,
+            "merge_output_format": None,
+            "trim_filenames": None,
+            "extractor_args": {},
+            "extract_flat": False,
+            "power_mode_args": [],
         },
         "defaults": {},
+        "format_data": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -375,7 +449,6 @@ def _mock_job_runner(job_id: str):
 
 
 def api_login(email: str, password: str):
-    import requests
     try:
         r = requests.post(f"{API_BASE}/auth/login",
                           json={"email": email, "password": password}, timeout=5)
@@ -387,7 +460,6 @@ def api_login(email: str, password: str):
 
 
 def api_register(email: str, password: str):
-    import requests
     try:
         r = requests.post(f"{API_BASE}/auth/register",
                           json={"email": email, "password": password}, timeout=5)
@@ -399,7 +471,6 @@ def api_register(email: str, password: str):
 
 
 def api_get_info(url: str):
-    import requests
     if not st.session_state.token:
         return None, "Not authenticated"
     try:
@@ -420,7 +491,6 @@ def api_get_info(url: str):
 
 
 def api_start_download(url, opts):
-    import requests
     if not st.session_state.token:
         return None, "Not authenticated"
     try:
@@ -457,7 +527,6 @@ def api_start_download(url, opts):
 
 
 def api_cancel_job(job_id):
-    import requests
     if job_id in st.session_state.jobs:
         st.session_state.jobs[job_id]["_cancel"] = True
         st.session_state.jobs[job_id]["status"] = "cancelled"
@@ -474,7 +543,6 @@ def api_cancel_job(job_id):
 
 
 def api_get_history():
-    import requests
     try:
         r = requests.get(
             f"{API_BASE}/api/downloads",
@@ -490,7 +558,6 @@ def api_get_history():
 
 
 def api_upload_cookies(file_bytes):
-    import requests
     try:
         r = requests.post(
             f"{API_BASE}/api/settings/cookies/upload",
@@ -501,6 +568,70 @@ def api_upload_cookies(file_bytes):
         return r.status_code == 200, r.json().get("message", "Unknown response")
     except Exception as e:
         return False, f"Demo mode — cookie upload simulated. ({e})"
+
+
+def api_get_formats(url: str):
+    if not st.session_state.token:
+        return None, "Not authenticated"
+    try:
+        r = requests.get(
+            f"{API_BASE}/api/formats",
+            params={"url": url},
+            headers={"Authorization": f"Bearer {st.session_state.token}"},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            return r.json(), None
+        return None, r.json().get("detail", "Failed to fetch formats")
+    except Exception as e:
+        return None, f"Error: {e}"
+
+
+def api_get_defaults():
+    if not st.session_state.token:
+        return {}
+    try:
+        r = requests.get(
+            f"{API_BASE}/api/settings/defaults",
+            headers={"Authorization": f"Bearer {st.session_state.token}"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+
+def api_save_defaults(defaults: dict):
+    if not st.session_state.token:
+        return False
+    try:
+        r = requests.post(
+            f"{API_BASE}/api/settings/defaults",
+            json=defaults,
+            headers={"Authorization": f"Bearer {st.session_state.token}"},
+            timeout=5,
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def api_get_tool_versions():
+    if not st.session_state.token:
+        return None
+    try:
+        r = requests.get(
+            f"{API_BASE}/api/settings/yt-dlp-version",
+            headers={"Authorization": f"Bearer {st.session_state.token}"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
 
 
 def fmt_bytes(n):
@@ -564,6 +695,76 @@ def empty_state(icon, title, subtitle=""):
 def live_queue_jobs():
     return [j for j in st.session_state.jobs.values()
             if j.get("status") in ("queued", "running")]
+
+
+def build_command_preview(opts: dict, url: str) -> str:
+    """Generate a yt-dlp CLI command string from the dl_opts dict."""
+    parts = ["yt-dlp"]
+
+    if opts.get("format") and opts["format"] != "best":
+        parts.append(f'-f "{opts["format"]}"')
+
+    if opts.get("embed_metadata"):
+        parts.append("--embed-metadata")
+    if opts.get("embed_thumbnail"):
+        parts.append("--embed-thumbnail")
+    if opts.get("write_subs"):
+        parts.append("--write-subs")
+    if opts.get("subtitles_langs"):
+        langs = opts["subtitles_langs"]
+        if isinstance(langs, list) and langs:
+            parts.append(f'--sub-langs {",".join(langs)}')
+    if opts.get("write_auto_subs"):
+        parts.append("--write-auto-subs")
+    if opts.get("sponsorblock") == "remove":
+        parts.append("--sponsorblock-remove all")
+    elif opts.get("sponsorblock") == "mark":
+        parts.append("--sponsorblock-mark all")
+    if opts.get("rate_limit"):
+        parts.append(f'--limit-rate {opts["rate_limit"]}')
+    if opts.get("proxy_url"):
+        parts.append(f'--proxy {opts["proxy_url"]}')
+    if opts.get("outtmpl"):
+        parts.append(f'-o "{opts["outtmpl"]}"')
+    if opts.get("playlist"):
+        parts.append("--yes-playlist")
+    else:
+        parts.append("--no-playlist")
+    if opts.get("playlist_items"):
+        parts.append(f'--playlist-items {opts["playlist_items"]}')
+    if opts.get("extract_audio"):
+        parts.append("--extract-audio")
+    if opts.get("audio_format"):
+        parts.append(f'--audio-format {opts["audio_format"]}')
+    if opts.get("split_chapters"):
+        parts.append("--split-chapters")
+    if opts.get("geo_bypass"):
+        parts.append("--geo-bypass")
+    if opts.get("cookies_from_browser"):
+        parts.append(f'--cookies-from-browser {opts["cookies_from_browser"]}')
+    if opts.get("restrict_filenames"):
+        parts.append("--restrict-filenames")
+    if opts.get("windows_filenames"):
+        parts.append("--windows-filenames")
+    if opts.get("force_ipv4"):
+        parts.append("--force-ipv4")
+    if opts.get("force_ipv6"):
+        parts.append("--force-ipv6")
+    if opts.get("ignore_errors"):
+        parts.append("--ignore-errors")
+    if opts.get("prefer_free_formats"):
+        parts.append("--prefer-free-formats")
+    if opts.get("format_sort"):
+        parts.append(f'--format-sort {opts["format_sort"]}')
+    if opts.get("downloader"):
+        parts.append(f'--downloader {opts["downloader"]}')
+
+    if url:
+        parts.append(f'"{url}"')
+
+    if len(parts) <= 3:
+        return " ".join(parts)
+    return " \\\n  ".join(parts)
 
 
 def render_auth():
@@ -654,55 +855,584 @@ def render_app():
 
 
 def render_download_tab():
+    opts = st.session_state.dl_opts
+
     section_heading("Video URL")
 
     url = st.text_input(
         "URL",
         placeholder="https://youtube.com/watch?v=  or playlist URL…",
         key="dl_url",
+        value=opts.get("url", ""),
     )
+    opts["url"] = url
 
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         fmt = st.selectbox(
-            "Format",
+            "Container",
             options=["mp4", "webm", "mkv", "mp3", "m4a", "best"],
+            index=["mp4", "webm", "mkv", "mp3", "m4a", "best"].index(opts.get("format", "mp4")),
             key="dl_format",
         )
+        opts["format"] = fmt
     with col2:
         is_audio = fmt in ("mp3", "m4a")
         quality_opts = ["audio"] if is_audio else ["best", "4k", "1440p", "1080p", "720p", "480p"]
         quality = st.selectbox(
             "Quality",
             options=quality_opts,
+            index=quality_opts.index(opts.get("quality", "best")) if opts.get("quality") in quality_opts else 0,
             key="dl_quality",
         )
+        opts["quality"] = quality
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        playlist = st.checkbox("Playlist mode", key="playlist_toggle")
+        playlist = st.checkbox("Playlist mode", value=opts.get("playlist", False), key="playlist_toggle")
+        opts["playlist"] = playlist
 
-    with st.expander("Advanced Options", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            embed_metadata = st.checkbox("Embed metadata", key="opt_embed_metadata")
-            embed_thumbnail = st.checkbox("Embed thumbnail", key="opt_embed_thumbnail")
-            write_subs = st.checkbox("Write subtitles", key="opt_write_subs")
-            extract_audio = st.checkbox("Extract audio only", key="opt_extract_audio")
-        with col2:
-            sponsorblock = st.selectbox(
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    with st.expander("Section A: Format & Quality", expanded=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["format_sort"] = st.text_input(
+                "Format Sort",
+                value=opts.get("format_sort") or "",
+                placeholder="e.g. res,fps,codec",
+                key="opt_format_sort",
+            ) or None
+            opts["video_codec"] = st.selectbox(
+                "Video Codec",
+                options=[None, "h264", "h265", "vp9", "av1"],
+                format_func=lambda x: "Any" if x is None else x.upper(),
+                index=0 if opts.get("video_codec") is None else ["h264", "h265", "vp9", "av1"].index(opts["video_codec"]) + 1,
+                key="opt_video_codec",
+            )
+            opts["prefer_free_formats"] = st.checkbox(
+                "Prefer Free Formats",
+                value=opts.get("prefer_free_formats", False),
+                key="opt_prefer_free",
+            )
+        with c2:
+            opts["audio_codec"] = st.selectbox(
+                "Audio Codec",
+                options=[None, "aac", "opus", "mp3", "flac"],
+                format_func=lambda x: "Any" if x is None else x.upper(),
+                index=0 if opts.get("audio_codec") is None else ["aac", "opus", "mp3", "flac"].index(opts["audio_codec"]) + 1,
+                key="opt_audio_codec",
+            )
+            opts["merge_output_format"] = st.selectbox(
+                "Merge Output",
+                options=[None, "mp4", "mkv", "webm", "mov", "avi", "flv"],
+                key="opt_merge_output",
+            )
+            opts["check_formats"] = st.checkbox(
+                "Check Formats",
+                value=opts.get("check_formats", False),
+                key="opt_check_formats",
+            )
+
+    with st.expander("Section B: Post-Processing", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["extract_audio"] = st.checkbox(
+                "Extract Audio",
+                value=opts.get("extract_audio", False),
+                key="opt_extract_audio",
+            )
+            opts["audio_format"] = st.selectbox(
+                "Audio Format",
+                options=[None, "mp3", "m4a", "flac", "opus", "vorbis", "wav", "aac"],
+                key="opt_audio_format",
+            )
+            opts["audio_quality"] = st.text_input(
+                "Audio Quality",
+                value=opts.get("audio_quality", "192"),
+                key="opt_audio_quality",
+            )
+            opts["normalize_audio"] = st.checkbox(
+                "Normalize Audio",
+                value=opts.get("normalize_audio", False),
+                key="opt_normalize_audio",
+            )
+        with c2:
+            opts["convert_video"] = st.selectbox(
+                "Convert Video",
+                options=[None, "mp4", "mkv", "webm", "mov", "avi", "flv"],
+                key="opt_convert_video",
+            )
+            opts["embed_thumbnail"] = st.checkbox(
+                "Embed Thumbnail",
+                value=opts.get("embed_thumbnail", False),
+                key="opt_embed_thumb",
+            )
+            opts["write_thumbnail"] = st.checkbox(
+                "Write Thumbnail",
+                value=opts.get("write_thumbnail", False),
+                key="opt_write_thumb",
+            )
+            opts["embed_metadata"] = st.checkbox(
+                "Embed Metadata",
+                value=opts.get("embed_metadata", False),
+                key="opt_embed_meta",
+            )
+
+        c3, c4 = st.columns(2)
+        with c3:
+            opts["embed_subs"] = st.checkbox(
+                "Embed Subtitles",
+                value=opts.get("embed_subs", False),
+                key="opt_embed_subs",
+            )
+            opts["split_chapters"] = st.checkbox(
+                "Split Chapters",
+                value=opts.get("split_chapters", False),
+                key="opt_split_chapters",
+            )
+            opts["remux"] = st.checkbox(
+                "Remux",
+                value=opts.get("remux", False),
+                key="opt_remux",
+            )
+        with c4:
+            opts["write_info_json"] = st.checkbox(
+                "Write Info JSON",
+                value=opts.get("write_info_json", False),
+                key="opt_write_infojson",
+            )
+            opts["write_description"] = st.checkbox(
+                "Write Description",
+                value=opts.get("write_description", False),
+                key="opt_write_desc",
+            )
+            opts["write_comments"] = st.checkbox(
+                "Write Comments",
+                value=opts.get("write_comments", False),
+                key="opt_write_comments",
+            )
+
+    with st.expander("Section C: Subtitles", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["write_subs"] = st.checkbox(
+                "Write Subtitles",
+                value=opts.get("write_subs", False),
+                key="opt_write_subs",
+            )
+            opts["write_auto_subs"] = st.checkbox(
+                "Write Auto-Subs",
+                value=opts.get("write_auto_subs", False),
+                key="opt_write_auto_subs",
+            )
+        with c2:
+            opts["subtitles_langs"] = st.text_input(
+                "Languages",
+                value=",".join(opts.get("subtitles_langs") or []),
+                placeholder="en,de,fr",
+                key="opt_sub_langs",
+            )
+            opts["subtitles_format"] = st.selectbox(
+                "Subtitle Format",
+                options=[None, "srt", "vtt", "ass", "lrc"],
+                key="opt_sub_format",
+            )
+            opts["convert_subs"] = st.selectbox(
+                "Convert Subs",
+                options=[None, "srt", "vtt", "ass", "lrc"],
+                key="opt_convert_subs",
+            )
+
+    with st.expander("Section D: Video Selection", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["playlist_items"] = st.text_input(
+                "Playlist Items",
+                value=opts.get("playlist_items") or "",
+                placeholder="e.g. 1,3,5-7",
+                key="opt_pl_items",
+            ) or None
+            opts["playlist_start"] = st.number_input(
+                "Start Index",
+                value=opts.get("playlist_start") or 0,
+                min_value=0,
+                key="opt_pl_start",
+            ) or None
+            opts["playlist_end"] = st.number_input(
+                "End Index",
+                value=opts.get("playlist_end") or 0,
+                min_value=0,
+                key="opt_pl_end",
+            ) or None
+            opts["playlist_reverse"] = st.checkbox(
+                "Reverse Playlist",
+                value=opts.get("playlist_reverse", False),
+                key="opt_pl_reverse",
+            )
+            opts["playlist_random"] = st.checkbox(
+                "Random Order",
+                value=opts.get("playlist_random", False),
+                key="opt_pl_random",
+            )
+        with c2:
+            opts["date_before"] = st.text_input(
+                "Date Before",
+                value=opts.get("date_before") or "",
+                placeholder="YYYYMMDD",
+                key="opt_date_before",
+            ) or None
+            opts["date_after"] = st.text_input(
+                "Date After",
+                value=opts.get("date_after") or "",
+                placeholder="YYYYMMDD",
+                key="opt_date_after",
+            ) or None
+            opts["min_duration"] = st.number_input(
+                "Min Duration (s)",
+                value=opts.get("min_duration") or 0,
+                min_value=0,
+                key="opt_min_dur",
+            ) or None
+            opts["max_duration"] = st.number_input(
+                "Max Duration (s)",
+                value=opts.get("max_duration") or 0,
+                min_value=0,
+                key="opt_max_dur",
+            ) or None
+            opts["min_views"] = st.number_input(
+                "Min Views",
+                value=opts.get("min_views") or 0,
+                min_value=0,
+                key="opt_min_views",
+            ) or None
+            opts["max_views"] = st.number_input(
+                "Max Views",
+                value=opts.get("max_views") or 0,
+                min_value=0,
+                key="opt_max_views",
+            ) or None
+
+        c3, c4 = st.columns(2)
+        with c3:
+            opts["match_title"] = st.text_input(
+                "Match Title Regex",
+                value=opts.get("match_title") or "",
+                key="opt_match_title",
+            ) or None
+            opts["reject_title"] = st.text_input(
+                "Reject Title Regex",
+                value=opts.get("reject_title") or "",
+                key="opt_reject_title",
+            ) or None
+            opts["break_match_filters"] = st.checkbox(
+                "Break on Match",
+                value=opts.get("break_match_filters", False),
+                key="opt_break_match",
+            )
+        with c4:
+            opts["skip_livestreams"] = st.checkbox(
+                "Skip Livestreams",
+                value=opts.get("skip_livestreams", False),
+                key="opt_skip_live",
+            )
+            opts["age_limit"] = st.number_input(
+                "Age Limit",
+                value=opts.get("age_limit") or 0,
+                min_value=0,
+                max_value=99,
+                key="opt_age_limit",
+            ) or None
+
+    with st.expander("Section E: Download Behaviour", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["rate_limit"] = st.text_input(
+                "Rate Limit",
+                value=opts.get("rate_limit") or "",
+                placeholder="e.g. 1M, 500K",
+                key="opt_rate_limit",
+            ) or None
+            opts["concurrent_fragments"] = st.slider(
+                "Concurrent Fragments",
+                min_value=1,
+                max_value=16,
+                value=opts.get("concurrent_fragments") or 1,
+                key="opt_conc_frag",
+            )
+            opts["retries"] = st.number_input(
+                "Retries",
+                value=opts.get("retries") or 0,
+                min_value=1,
+                max_value=20,
+                key="opt_retries",
+            ) or None
+            opts["fragment_retries"] = st.number_input(
+                "Fragment Retries",
+                value=opts.get("fragment_retries") or 0,
+                min_value=1,
+                max_value=20,
+                key="opt_frag_retries",
+            ) or None
+            opts["skip_unavailable_fragments"] = st.checkbox(
+                "Skip Unavailable Frags",
+                value=opts.get("skip_unavailable_fragments", False),
+                key="opt_skip_unavail",
+            )
+        with c2:
+            opts["buffersize"] = st.text_input(
+                "Buffer Size",
+                value=opts.get("buffersize") or "",
+                placeholder="e.g. 1024",
+                key="opt_buffersize",
+            ) or None
+            opts["http_chunk_size"] = st.text_input(
+                "HTTP Chunk Size",
+                value=opts.get("http_chunk_size") or "",
+                key="opt_http_chunk",
+            ) or None
+            opts["ignore_errors"] = st.checkbox(
+                "Continue on Error",
+                value=opts.get("ignore_errors", False),
+                key="opt_ignore_errors",
+            )
+            opts["download_archive"] = st.text_input(
+                "Download Archive",
+                value=opts.get("download_archive") or "",
+                placeholder="Path to archive file",
+                key="opt_archive",
+            ) or None
+            opts["keep_fragments"] = st.checkbox(
+                "Keep Fragments",
+                value=opts.get("keep_fragments", False),
+                key="opt_keep_frags",
+            )
+
+        c3, c4 = st.columns(2)
+        with c3:
+            opts["sleep_requests"] = st.slider(
+                "Sleep Between Requests (s)",
+                min_value=0.0,
+                max_value=10.0,
+                value=float(opts.get("sleep_requests") or 0.0),
+                step=0.5,
+                key="opt_sleep_req",
+            ) or None
+            opts["sleep_interval"] = st.slider(
+                "Sleep Between Downloads (s)",
+                min_value=0.0,
+                max_value=30.0,
+                value=float(opts.get("sleep_interval") or 0.0),
+                step=1.0,
+                key="opt_sleep_dl",
+            ) or None
+        with c4:
+            opts["downloader"] = st.selectbox(
+                "Downloader",
+                options=[None, "native", "ffmpeg", "aria2c", "curl", "wget"],
+                key="opt_downloader",
+            )
+            opts["downloader_args"] = st.text_input(
+                "Downloader Args",
+                value=opts.get("downloader_args") or "",
+                key="opt_dl_args",
+            ) or None
+
+    with st.expander("Section F: Network & Authentication", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["proxy_url"] = st.text_input(
+                "Proxy URL",
+                value=opts.get("proxy_url") or "",
+                key="opt_proxy",
+            ) or None
+            opts["source_address"] = st.text_input(
+                "Source IP",
+                value=opts.get("source_address") or "",
+                key="opt_source_ip",
+            ) or None
+            opts["force_ipv4"] = st.checkbox(
+                "Force IPv4",
+                value=opts.get("force_ipv4", False),
+                key="opt_ipv4",
+            )
+            opts["force_ipv6"] = st.checkbox(
+                "Force IPv6",
+                value=opts.get("force_ipv6", False),
+                key="opt_ipv6",
+            )
+            opts["geo_bypass"] = st.checkbox(
+                "Geo Bypass",
+                value=opts.get("geo_bypass", False),
+                key="opt_geo_bypass",
+            )
+            opts["geo_bypass_country"] = st.text_input(
+                "Geo Bypass Country",
+                value=opts.get("geo_bypass_country") or "",
+                placeholder="2-letter code",
+                key="opt_geo_country",
+            ) or None
+            opts["socket_timeout"] = st.number_input(
+                "Socket Timeout (s)",
+                value=opts.get("socket_timeout") or 0,
+                min_value=0,
+                key="opt_socket_timeout",
+            ) or None
+        with c2:
+            opts["user_agent"] = st.text_input(
+                "User Agent",
+                value=opts.get("user_agent") or "",
+                key="opt_user_agent",
+            ) or None
+            opts["cookies_from_browser"] = st.selectbox(
+                "Cookies from Browser",
+                options=[None, "chrome", "firefox", "edge", "safari", "brave"],
+                key="opt_cookies_browser",
+            )
+            opts["username"] = st.text_input(
+                "Username",
+                value=opts.get("username") or "",
+                key="opt_username",
+            ) or None
+            opts["password"] = st.text_input(
+                "Password",
+                type="password",
+                value=opts.get("password") or "",
+                key="opt_password",
+            ) or None
+            opts["twofactor"] = st.text_input(
+                "2FA Code",
+                value=opts.get("twofactor") or "",
+                key="opt_twofactor",
+            ) or None
+            opts["netrc"] = st.checkbox(
+                "Use .netrc",
+                value=opts.get("netrc", False),
+                key="opt_netrc",
+            )
+            opts["no_check_certificates"] = st.checkbox(
+                "No Check Certificates",
+                value=opts.get("no_check_certificates", False),
+                key="opt_no_cert",
+            )
+            opts["prefer_insecure"] = st.checkbox(
+                "Prefer Insecure",
+                value=opts.get("prefer_insecure", False),
+                key="opt_prefer_insecure",
+            )
+
+    with st.expander("Section G: SponsorBlock", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["sponsorblock"] = st.selectbox(
                 "SponsorBlock",
                 options=[None, "mark", "remove"],
                 format_func=lambda x: "None" if x is None else x.capitalize(),
                 key="opt_sponsorblock",
             )
-            rate_limit = st.text_input("Rate limit (e.g. 1M)", key="opt_rate_limit")
-            proxy_url = st.text_input("Proxy URL", key="opt_proxy_url")
+            opts["sponsorblock_categories"] = st.multiselect(
+                "Categories",
+                options=["sponsor", "intro", "outro", "selfpromo", "interaction", "music_offtopic", "preview", "filler"],
+                default=opts.get("sponsorblock_categories") or [],
+                key="opt_sb_categories",
+            )
+        with c2:
+            opts["sponsorblock_api_url"] = st.text_input(
+                "API URL",
+                value=opts.get("sponsorblock_api_url", "https://sponsor.ajay.app"),
+                key="opt_sb_api",
+            )
+            opts["sponsorblock_chapter_title"] = st.text_input(
+                "Chapter Title",
+                value=opts.get("sponsorblock_chapter_title") or "",
+                placeholder="Template for marked segments",
+                key="opt_sb_chapter",
+            ) or None
+
+    with st.expander("Section H: Output Template", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["outtmpl"] = st.text_input(
+                "Output Template",
+                value=opts.get("outtmpl") or "",
+                placeholder="%(title)s.%(ext)s",
+                key="opt_outtmpl",
+            ) or None
+            opts["restrict_filenames"] = st.checkbox(
+                "Restrict Filenames",
+                value=opts.get("restrict_filenames", False),
+                key="opt_restrict",
+            )
+            opts["windows_filenames"] = st.checkbox(
+                "Windows Filenames",
+                value=opts.get("windows_filenames", False),
+                key="opt_windows",
+            )
+        with c2:
+            opts["trim_filenames"] = st.number_input(
+                "Trim Filenames",
+                value=opts.get("trim_filenames") or 0,
+                min_value=0,
+                key="opt_trim",
+            ) or None
+            opts["no_part_files"] = st.checkbox(
+                "No Part Files",
+                value=opts.get("no_part_files", False),
+                key="opt_no_part",
+            )
+
+        with st.expander("Template Variables Reference"):
+            st.markdown("""
+            | Variable | Description |
+            |----------|-------------|
+            | `%(title)s` | Video title |
+            | `%(id)s` | Video ID |
+            | `%(uploader)s` | Uploader name |
+            | `%(upload_date)s` | YYYYMMDD |
+            | `%(duration)s` | Duration in seconds |
+            | `%(ext)s` | File extension |
+            | `%(resolution)s` | e.g. 1920x1080 |
+            | `%(fps)s` | Frames per second |
+            | `%(tbr)s` | Total bitrate |
+            | `%(vcodec)s` | Video codec |
+            | `%(acodec)s` | Audio codec |
+            | `%(filesize)s` | File size bytes |
+            | `%(playlist_index)s` | Index in playlist |
+            | `%(playlist_title)s` | Playlist title |
+            | `%(channel)s` | Channel name |
+            | `%(epoch)s` | Unix timestamp |
+            | `%(autonumber)s` | Auto-incrementing number |
+            | `%(release_date)s` | Release date YYYYMMDD |
+            | `%(view_count)s` | View count |
+            """)
+
+    with st.expander("Section I: Extractor Options", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            opts["extract_flat"] = st.selectbox(
+                "Flat Playlist",
+                options=[False, True, "in_playlist"],
+                format_func=lambda x: {False: "Disabled", True: "Enabled", "in_playlist": "If Known"}.get(x, "Disabled"),
+                key="opt_extract_flat",
+            )
+        with c2:
+            opts["extractor_args"] = st.text_area(
+                "Extractor Args",
+                value=json.dumps(opts.get("extractor_args") or {}, indent=2),
+                height=100,
+                key="opt_extractor_args",
+            )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    section_heading("Command Preview")
+    cmd = build_command_preview(opts, url or "")
+    st.code(cmd, language="bash")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 2])
     with btn_col1:
-        preview_clicked = st.button("Preview", key="preview_btn", use_container_width=True)
+        preview_clicked = st.button("Preview Info", key="preview_btn", use_container_width=True)
     with btn_col2:
         formats_clicked = st.button("List Formats", key="formats_btn", use_container_width=True)
     with btn_col3:
@@ -718,6 +1448,17 @@ def render_download_tab():
                 st.error(f"Error: {err}")
             else:
                 st.session_state.preview_info = info
+
+    if formats_clicked:
+        if not url:
+            st.error("Please enter a URL.")
+        else:
+            with st.spinner("Fetching formats…"):
+                data, err = api_get_formats(url)
+            if err:
+                st.error(f"Error: {err}")
+            else:
+                st.session_state.format_data = data
 
     if st.session_state.preview_info:
         info = st.session_state.preview_info
@@ -736,23 +1477,21 @@ def render_download_tab():
                 </div>
             </div>
             """, unsafe_allow_html=True)
+            fmts = info.get("formats", [])
+            if fmts:
+                heights = sorted(
+                    set(f["height"] for f in fmts if f.get("height")),
+                    reverse=True,
+                )[:6]
+                badges = " ".join(
+                    f'<span class="sl-badge sl-badge-default">{h}p</span>' for h in heights
+                )
+                st.markdown(f"<br>{badges}", unsafe_allow_html=True)
 
     if dl_clicked:
         if not url:
             st.error("Please enter a URL.")
         else:
-            opts = {
-                "format": fmt,
-                "quality": quality,
-                "playlist": playlist,
-                "embed_metadata": embed_metadata,
-                "embed_thumbnail": embed_thumbnail,
-                "write_subs": write_subs,
-                "extract_audio": extract_audio,
-                "sponsorblock": sponsorblock,
-                "rate_limit": rate_limit if rate_limit else None,
-                "proxy_url": proxy_url if proxy_url else None,
-            }
             with st.spinner("Queuing download…"):
                 job, err = api_start_download(url, opts)
             if err:
@@ -829,28 +1568,22 @@ def render_queue_tab():
 def render_formats_tab():
     section_heading("Inspect Formats")
 
-    url = st.text_input("URL to inspect", placeholder="https://youtube.com/watch?v=...", key="formats_url")
+    url = st.text_input(
+        "URL to inspect",
+        placeholder="https://youtube.com/watch?v=...",
+        key="formats_url",
+    )
 
-    if st.button("Fetch Formats", key="fetch_formats_btn"):
+    if st.button("Fetch Formats", key="fetch_formats_btn", type="primary"):
         if not url:
             st.error("Please enter a URL.")
         else:
             with st.spinner("Fetching formats…"):
-                try:
-                    import requests
-                    r = requests.get(
-                        f"{API_BASE}/api/formats",
-                        params={"url": url},
-                        headers={"Authorization": f"Bearer {st.session_state.token}"},
-                        timeout=30,
-                    )
-                    if r.status_code == 200:
-                        data = r.json()
-                        st.session_state.format_data = data
-                    else:
-                        st.error(f"Error: {r.json().get('detail', 'Failed')}")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                data, err = api_get_formats(url)
+            if err:
+                st.error(f"Error: {err}")
+            else:
+                st.session_state.format_data = data
 
     if st.session_state.get("format_data"):
         data = st.session_state.format_data
@@ -858,22 +1591,36 @@ def render_formats_tab():
         st.markdown(f"_{data.get('uploader', '—')} · {fmt_duration(data.get('duration'))}_")
 
         formats = data.get("formats", [])
-        video_fmts = [f for f in formats if f.get("is_video")]
-        audio_fmts = [f for f in formats if f.get("is_audio")]
+        filter_type = st.radio("Filter", ["All", "Video Only", "Audio Only"], horizontal=True)
 
-        if video_fmts:
-            section_heading("Video Formats")
-            st.dataframe(video_fmts, use_container_width=True)
+        if filter_type == "Video Only":
+            formats = [f for f in formats if f.get("is_video")]
+        elif filter_type == "Audio Only":
+            formats = [f for f in formats if f.get("is_audio")]
 
-        if audio_fmts:
-            section_heading("Audio Formats")
-            st.dataframe(audio_fmts, use_container_width=True)
+        if formats:
+            st.dataframe(formats, use_container_width=True)
+        else:
+            empty_state("🎞️", "No formats found", "Try a different URL or filter")
 
 
 def render_history_tab():
     section_heading("Download history")
 
+    search = st.text_input("Search", placeholder="Filter by title or URL...", key="history_search")
+
     jobs = api_get_history()
+
+    if search:
+        jobs = [j for j in jobs if search.lower() in (j.get("title") or "").lower() or search.lower() in (j.get("url") or "").lower()]
+
+    status_filter = st.multiselect(
+        "Filter by status",
+        options=["done", "error", "cancelled"],
+        key="history_status_filter",
+    )
+    if status_filter:
+        jobs = [j for j in jobs if j.get("status") in status_filter]
 
     if not jobs:
         empty_state("📂", "No history yet", "Downloads will appear here")
@@ -930,6 +1677,50 @@ def render_settings_tab():
                     st.success(msg)
                 else:
                     st.warning(msg)
+
+    st.markdown("<br>")
+    st.markdown(
+        '<div class="sl-section">Bookmarklet (YouTube auto-sync)</div>',
+        unsafe_allow_html=True
+    )
+
+    bookmarklet_code = """javascript:(function(){
+  var cs=document.cookie.split(';').map(c=>{var p=c.trim().split('=');return{name:p[0],value:p.slice(1).join('='),domain:location.hostname,path:'/',secure:true};});
+  fetch('http://localhost:8000/api/settings/cookies/youtube',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer TOKEN'},body:JSON.stringify({cookies:cs})}).then(r=>r.json()).then(d=>alert('Streamline: '+d.message)).catch(e=>alert('Error: '+e));
+})();"""
+
+    st.code(bookmarklet_code, language="javascript")
+    st.markdown("""
+    <p style="font-size:0.78rem;color:hsl(var(--muted-foreground));line-height:1.6;">
+    Replace <code>TOKEN</code> with your Bearer token, then drag this snippet to your bookmarks bar.
+    Click it while on YouTube to automatically sync your session cookies.
+    </p>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    section_heading("Default Download Options")
+
+    if st.button("Load Defaults", key="load_defaults_btn"):
+        defaults = api_get_defaults()
+        if defaults:
+            st.session_state.defaults = defaults
+            st.success("Defaults loaded")
+
+    if st.button("Save Current as Defaults", key="save_defaults_btn"):
+        if api_save_defaults(st.session_state.dl_opts):
+            st.success("Defaults saved")
+        else:
+            st.warning("Failed to save defaults")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    section_heading("yt-dlp Info")
+
+    if st.button("Check Versions", key="check_versions_btn"):
+        versions = api_get_tool_versions()
+        if versions:
+            st.json(versions)
+        else:
+            st.warning("Could not fetch version info")
 
     st.markdown("<hr>", unsafe_allow_html=True)
     section_heading("Session")
