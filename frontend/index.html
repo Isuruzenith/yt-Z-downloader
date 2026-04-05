@@ -3,51 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>yt-Z — Download</title>
-  <link rel="stylesheet" href="./assets/style.css">
+  <title>Streamline — Download</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0f0f0f',
+            surface: '#1a1a1a',
+            'surface-2': '#222222',
+            border: '#2a2a2a',
+            accent: '#ff4444',
+            'accent-hover': '#ff6666',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="bg-bg text-[#e0e0e0] font-sans">
 
-  <nav class="nav">
-    <a href="/index.html" class="nav-logo">yt-Z</a>
-    <div class="nav-links">
-      <a href="/index.html">Download</a>
-      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
-      <a href="/history.html">History</a>
-      <a href="/library.html">Library</a>
-      <a href="/settings.html">Settings</a>
+  <nav class="sticky top-0 z-50 h-14 bg-surface border-b border-border flex items-center px-6 gap-4">
+    <a href="/index.html" class="text-xl font-bold text-accent tracking-tight shrink-0">Streamline</a>
+    <div class="flex items-center gap-1">
+      <a href="/index.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Download</a>
+      <a href="/queue.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Queue <span id="queue-badge" class="hidden inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-accent text-white text-[10px] font-bold">0</span></a>
+      <a href="/history.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">History</a>
+      <a href="/library.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Library</a>
+      <a href="/settings.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Settings</a>
     </div>
-    <div class="nav-spacer"></div>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    <div class="flex-1"></div>
+    <button class="bg-transparent text-[#888] hover:text-[#e0e0e0] border-0 px-3 py-1.5 text-sm cursor-pointer transition" onclick="logout()">Logout</button>
   </nav>
 
-  <main class="page">
+  <main class="max-w-[860px] mx-auto p-6">
 
     <!-- Presets -->
-    <div class="card mt-2" id="presets-card">
-      <div class="flex-row" style="gap: 1rem; align-items: center; justify-content: space-between;">
-        <div class="form-group" style="margin-bottom:0; flex:1;">
-          <label for="preset-select">Preset</label>
-          <select id="preset-select" onchange="applyPreset()">
+    <div class="bg-surface border border-border rounded-lg p-6 mt-4" id="presets-card">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1">
+          <label for="preset-select" class="block text-sm text-[#888] font-medium mb-1">Preset</label>
+          <select id="preset-select" onchange="applyPreset()"
+            class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition">
             <option value="">-- Custom --</option>
           </select>
         </div>
-        <button class="btn btn-secondary" onclick="savePreset()" style="margin-top: 1.25rem;">Save as Preset</button>
+        <button class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition mt-[1.25rem]" onclick="savePreset()">Save as Preset</button>
       </div>
     </div>
 
-    <div class="card mt-2">
+    <div class="bg-surface border border-border rounded-lg p-6 mt-4">
       <!-- URL input -->
-      <div class="form-group">
-        <label for="url-input">Video or Playlist URL</label>
-        <input type="url" id="url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+      <div class="mb-4">
+        <label for="url-input" class="block text-sm text-[#888] font-medium mb-1">Video or Playlist URL</label>
+        <input type="url" id="url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off"
+          class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition placeholder:text-[#888]">
       </div>
 
       <!-- Format / Quality / Options row -->
-      <div class="input-row">
-        <div class="form-group" style="margin-bottom:0">
-          <label for="fmt-select">Format</label>
-          <select id="fmt-select">
+      <div class="grid grid-cols-2 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+        <div>
+          <label for="fmt-select" class="block text-sm text-[#888] font-medium mb-1">Format</label>
+          <select id="fmt-select"
+            class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition">
             <option value="mp4">MP4 (video)</option>
             <option value="webm">WebM (video)</option>
             <option value="mkv">MKV (video)</option>
@@ -56,9 +75,10 @@
             <option value="best">Best (auto)</option>
           </select>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label for="qual-select">Quality</label>
-          <select id="qual-select">
+        <div>
+          <label for="qual-select" class="block text-sm text-[#888] font-medium mb-1">Quality</label>
+          <select id="qual-select"
+            class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition">
             <option value="best">Best</option>
             <option value="4k">4K</option>
             <option value="1440p">1440p</option>
@@ -68,47 +88,49 @@
             <option value="audio">Audio only</option>
           </select>
         </div>
-        <button id="preview-btn" class="btn btn-secondary" onclick="fetchInfo()">Preview</button>
+        <button id="preview-btn" class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition" onclick="fetchInfo()">Preview</button>
       </div>
 
-      <label class="toggle-row">
-        <input type="checkbox" id="playlist-toggle">
+      <label class="flex items-center gap-2.5 my-3 text-sm text-[#888] cursor-pointer">
+        <input type="checkbox" id="playlist-toggle" class="accent-accent w-4 h-4 cursor-pointer">
         Download as playlist
       </label>
 
 
       <!-- Advanced Options -->
-      <details class="mt-2" style="margin-bottom: 1rem;">
-        <summary style="cursor:pointer; color:var(--primary); font-size:0.9rem; font-weight:600;">Advanced Options</summary>
-        <div class="input-row mt-1" style="flex-wrap: wrap; gap: 1rem;">
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="embed-subs"> Embed Subtitles
+      <details class="mt-4 mb-4">
+        <summary class="cursor-pointer text-accent text-sm font-semibold">Advanced Options</summary>
+        <div class="flex flex-wrap gap-4 mt-4">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="embed-subs" class="accent-accent w-4 h-4 cursor-pointer"> Embed Subtitles
           </label>
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="embed-thumb"> Embed Thumbnail
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="embed-thumb" class="accent-accent w-4 h-4 cursor-pointer"> Embed Thumbnail
           </label>
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="embed-meta"> Embed Metadata
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="embed-meta" class="accent-accent w-4 h-4 cursor-pointer"> Embed Metadata
           </label>
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="split-chapters"> Split Chapters
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="split-chapters" class="accent-accent w-4 h-4 cursor-pointer"> Split Chapters
           </label>
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="write-info"> Save Info JSON
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="write-info" class="accent-accent w-4 h-4 cursor-pointer"> Save Info JSON
           </label>
-          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-            <input type="checkbox" id="remux"> Remux output
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" id="remux" class="accent-accent w-4 h-4 cursor-pointer"> Remux output
           </label>
         </div>
         
-        <div class="input-row mt-1" style="gap: 1rem;">
-          <div class="form-group" style="flex:1;">
-            <label for="subs-langs">Subtitle Languages (comma separated, e.g., en,fr)</label>
-            <input type="text" id="subs-langs" placeholder="en">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label for="subs-langs" class="block text-sm text-[#888] font-medium mb-1">Subtitle Languages (comma separated, e.g., en,fr)</label>
+            <input type="text" id="subs-langs" placeholder="en"
+              class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition placeholder:text-[#888]">
           </div>
-          <div class="form-group" style="flex:1;">
-            <label for="sponsorblock">SponsorBlock</label>
-            <select id="sponsorblock">
+          <div>
+            <label for="sponsorblock" class="block text-sm text-[#888] font-medium mb-1">SponsorBlock</label>
+            <select id="sponsorblock"
+              class="w-full bg-surface-2 border border-border rounded-lg text-[#e0e0e0] px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition">
               <option value="">Disabled</option>
               <option value="mark">Mark Sponsors</option>
               <option value="remove">Remove Sponsors</option>
@@ -118,22 +140,22 @@
       </details>
 
       <!-- Info preview -->
-      <div id="info-card" class="info-card card mt-2">
-        <img id="info-thumb" class="info-thumb" src="" alt="">
-        <div class="info-details">
-          <h3 id="info-title"></h3>
-          <p id="info-uploader"></p>
-          <p id="info-duration" class="text-muted"></p>
+      <div id="info-card" class="hidden items-start gap-4 bg-surface border border-border rounded-lg p-6 mt-4">
+        <img id="info-thumb" class="w-[120px] min-w-[120px] aspect-video object-cover rounded-md bg-surface-2" src="" alt="">
+        <div>
+          <h3 id="info-title" class="text-base font-medium mb-1"></h3>
+          <p id="info-uploader" class="text-sm text-[#888] mb-0.5"></p>
+          <p id="info-duration" class="text-sm text-[#888]"></p>
         </div>
       </div>
 
-      <p id="url-error" class="error-msg hidden"></p>
+      <p id="url-error" class="text-[#ef4444] text-sm mt-2 hidden"></p>
 
-      <div class="flex-row mt-2">
-        <button id="download-btn" class="btn btn-primary" onclick="submitDownload()">
+      <div class="flex items-center gap-3 mt-4">
+        <button id="download-btn" class="bg-accent hover:bg-accent-hover text-white font-medium px-5 py-2.5 rounded-lg cursor-pointer transition" onclick="submitDownload()">
           Download
         </button>
-        <span id="submit-msg" class="text-muted hidden" style="font-size:.85rem"></span>
+        <span id="submit-msg" class="text-[#888] text-sm hidden"></span>
       </div>
     </div>
   </main>
@@ -254,7 +276,7 @@
       if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
 
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Queuing';
+      btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin align-middle"></span> Queuing';
       try {
         const body = { url, ...getOptions() };
         await api('/download', {
@@ -280,12 +302,13 @@
       const btn = document.getElementById('preview-btn');
 
       errEl.classList.add('hidden');
-      infoCard.classList.remove('visible');
+      infoCard.classList.add('hidden');
+      infoCard.classList.remove('flex');
 
       if (!url) { errEl.textContent = 'Enter a URL first.'; errEl.classList.remove('hidden'); return; }
 
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span>';
+      btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin align-middle"></span>';
       try {
         const info = await api(`/info?url=${encodeURIComponent(url)}`);
         document.getElementById('info-title').textContent = info.title || 'Unknown title';
@@ -294,7 +317,8 @@
         const thumb = document.getElementById('info-thumb');
         if (info.thumbnail) { thumb.src = info.thumbnail; thumb.style.display = ''; }
         else thumb.style.display = 'none';
-        infoCard.classList.add('visible');
+        infoCard.classList.remove('hidden');
+        infoCard.classList.add('flex');
       } catch (e) {
         errEl.textContent = e.message || 'Failed to fetch info';
         errEl.classList.remove('hidden');

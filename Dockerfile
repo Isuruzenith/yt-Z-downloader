@@ -17,11 +17,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install yt-dlp nightly (fixes YouTube changes faster than stable)
+# Install yt-dlp nightly
 RUN pip install --no-cache-dir --pre "yt-dlp[default]"
 
 COPY api/ ./api/
 COPY frontend/ ./frontend/
+COPY streamlit_app.py .
 
 # Create volume mount points
 RUN mkdir -p /downloads /cookies /data

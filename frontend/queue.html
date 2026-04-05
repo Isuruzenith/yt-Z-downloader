@@ -3,28 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>yt-Z — Queue</title>
-  <link rel="stylesheet" href="./assets/style.css">
+  <title>Streamline — Queue</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0f0f0f',
+            surface: '#1a1a1a',
+            'surface-2': '#222222',
+            border: '#2a2a2a',
+            accent: '#ff4444',
+            'accent-hover': '#ff6666',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="bg-bg text-[#e0e0e0] font-sans">
 
-  <nav class="nav">
-    <a href="/index.html" class="nav-logo">yt-Z</a>
-    <div class="nav-links">
-      <a href="/index.html">Download</a>
-      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
-      <a href="/history.html">History</a>
-      <a href="/library.html">Library</a>
-      <a href="/settings.html">Settings</a>
+  <nav class="sticky top-0 z-50 h-14 bg-surface border-b border-border flex items-center px-6 gap-4">
+    <a href="/index.html" class="text-xl font-bold text-accent tracking-tight shrink-0">Streamline</a>
+    <div class="flex items-center gap-1">
+      <a href="/index.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Download</a>
+      <a href="/queue.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Queue <span id="queue-badge" class="hidden inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-accent text-white text-[10px] font-bold">0</span></a>
+      <a href="/history.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">History</a>
+      <a href="/library.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Library</a>
+      <a href="/settings.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Settings</a>
     </div>
-    <div class="nav-spacer"></div>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    <div class="flex-1"></div>
+    <button class="bg-transparent text-[#888] hover:text-[#e0e0e0] border-0 px-3 py-1.5 text-sm cursor-pointer transition" onclick="logout()">Logout</button>
   </nav>
 
-  <main class="page">
-    <div class="card-header" style="padding:0 0 1rem">
-      <h2 class="section-title" style="margin:0">Active Queue</h2>
-      <button class="btn btn-secondary btn-sm" onclick="renderQueue()">Refresh</button>
+  <main class="max-w-[860px] mx-auto p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Active Queue</h2>
+      <button class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-3 py-1.5 rounded-lg text-sm cursor-pointer transition" onclick="renderQueue()">Refresh</button>
     </div>
     <div id="job-list"></div>
   </main>
@@ -45,7 +61,7 @@
         renderQueue();
         connectWebSocket();
       } catch (e) {
-        document.getElementById('job-list').innerHTML = `<div class="empty-state"><h3>Error loading queue</h3><p>${escHtml(e.message)}</p></div>`;
+        document.getElementById('job-list').innerHTML = `<div class="text-center py-12"><h3 class="text-base font-medium mb-1">Error loading queue</h3><p class="text-[#888]">${escHtml(e.message)}</p></div>`;
       }
     }
 
@@ -82,9 +98,9 @@
 
       if (!_jobs.length) {
         list.innerHTML = `
-          <div class="empty-state">
-            <h3>Queue is empty</h3>
-            <p>Go to <a href="/index.html">Download</a> to add a video.</p>
+          <div class="text-center py-12">
+            <h3 class="text-base font-medium mb-1">Queue is empty</h3>
+            <p class="text-[#888]">Go to <a href="/index.html" class="text-accent hover:text-accent-hover">Download</a> to add a video.</p>
           </div>`;
         return;
       }
@@ -94,44 +110,53 @@
 
     function jobCard(j) {
       const pct = Math.round(j.progress || 0);
-      const fillClass = j.status === 'done' ? 'done' : j.status === 'error' ? 'error' : '';
+      const fillClass = j.status === 'done' ? 'bg-[#22c55e]' : j.status === 'error' ? 'bg-[#ef4444]' : 'bg-accent';
       const title = j.title || '';
       const displayUrl = j.url.length > 60 ? j.url.slice(0, 60) + '…' : j.url;
 
       const cancelBtn = j.status === 'queued'
-        ? `<button class="btn btn-danger btn-sm" onclick="cancelJob('${j.id}')">Cancel</button>`
+        ? `<button class="text-[#ef4444] border border-[#ef4444] hover:bg-[#ef4444] hover:text-white px-3 py-1.5 rounded-lg text-sm transition cursor-pointer" onclick="cancelJob('${j.id}')">Cancel</button>`
         : '';
 
       const filename = j.filepath
         ? j.filepath.split(/[\/]/).pop()
         : (j.title || 'download') + '.' + j.format;
       const saveBtn = j.status === 'done'
-        ? `<button class="btn btn-primary btn-sm" onclick="downloadFile('${escHtml(j.id)}','${escHtml(filename)}',this)">⬇ Save to PC</button>`
+        ? `<button class="bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer" onclick="downloadFile('${escHtml(j.id)}','${escHtml(filename)}',this)">Save to PC</button>`
         : '';
 
       const errorLine = j.error_msg
-        ? `<p class="error-msg mt-1" style="font-size:.8rem">${escHtml(j.error_msg)}</p>`
+        ? `<p class="text-[#ef4444] text-xs mt-2">${escHtml(j.error_msg)}</p>`
         : '';
 
+      const statusColors = {
+        queued: 'bg-[#1e293b] text-[#3b82f6]',
+        running: 'bg-[#1c1a0e] text-[#f59e0b]',
+        done: 'bg-[#0d2318] text-[#22c55e]',
+        error: 'bg-[#2a0d0d] text-[#ef4444]',
+        cancelled: 'bg-surface-2 text-[#888]',
+      };
+      const statusClass = statusColors[j.status] || statusColors.queued;
+
       return `
-        <div class="job-card" id="job-${j.id}">
-          <div class="job-header">
-            <div class="job-title">
-              ${title ? escHtml(title) : ''}
-              <span class="url">${escHtml(displayUrl)}</span>
+        <div class="bg-surface border border-border rounded-lg p-4 mb-3" id="job-${j.id}">
+          <div class="flex items-start justify-between gap-4 mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate">${title ? escHtml(title) : ''}</div>
+              <span class="text-[#888] text-xs block truncate">${escHtml(displayUrl)}</span>
             </div>
-            <div class="job-meta">
-              <span class="status status-${j.status}">${j.status}</span>
-              <span class="text-muted" style="font-size:.8rem">${j.format} / ${j.quality}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${statusClass}">${j.status}</span>
+              <span class="text-[#888] text-xs">${j.format} / ${j.quality}</span>
               ${cancelBtn}
             </div>
           </div>
           ${j.status === 'running' || j.status === 'done' || j.status === 'error' ? `
-            <div class="progress-bar">
-              <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+            <div class="bg-border rounded-full h-1.5 overflow-hidden my-2">
+              <div class="${fillClass} h-full transition-all duration-500 rounded-full" style="width:${pct}%"></div>
             </div>
-            <div class="job-footer">
-              <span class="job-progress-text">${pct}%</span>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-[#888]">${pct}%</span>
               ${saveBtn}
             </div>` : ''}
           ${errorLine}
@@ -142,7 +167,6 @@
       try {
         await api(`/queue/${jobId}`, { method: 'DELETE' });
         toast('Job cancelled', 'info');
-        // WebSocket will push the update, but we can optimistically update
       } catch (e) {
         toast(e.message, 'error');
       }

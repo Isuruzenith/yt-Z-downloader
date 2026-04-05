@@ -50,10 +50,17 @@ function toast(msg, type = 'info') {
   if (!container) {
     container = document.createElement('div');
     container.id = 'toast-container';
+    container.className = 'fixed bottom-6 right-6 z-[9999] flex flex-col gap-2';
     document.body.appendChild(container);
   }
   const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
+  const bgMap = {
+    success: 'bg-[#166534] border border-[#22c55e]',
+    error: 'bg-[#7f1d1d] border border-[#ef4444]',
+    info: 'bg-[#1e3a5f] border border-[#3b82f6]',
+  };
+  el.className = `px-4 py-3 rounded-lg text-sm text-white shadow-lg max-w-[320px] ${bgMap[type] || bgMap.info}`;
+  el.style.animation = 'toastSlideIn 0.2s ease';
   el.textContent = msg;
   container.appendChild(el);
   setTimeout(() => el.remove(), 3500);
@@ -78,12 +85,12 @@ async function updateNavBadge() {
 // ── Nav setup ─────────────────────────────────────────────────────────────────
 function setupNav() {
   requireAuth();
-  // Mark active link
   const path = location.pathname.replace(/\/$/, '') || '/index.html';
-  document.querySelectorAll('.nav-links a').forEach(a => {
+  document.querySelectorAll('.nav-link').forEach(a => {
     const href = a.getAttribute('href').replace(/\/$/, '') || '/index.html';
     if (path === href || (path === '/' && href === '/index.html')) {
-      a.classList.add('active');
+      a.classList.remove('text-[#888]');
+      a.classList.add('text-[#e0e0e0]', 'bg-surface-2');
     }
   });
   updateNavBadge();
@@ -94,7 +101,7 @@ let _pollInterval;
 
 function startPolling(renderFn, interval = 2500) {
   clearInterval(_pollInterval);
-  renderFn(); // immediate first call
+  renderFn();
   _pollInterval = setInterval(async () => {
     try {
       await renderFn();
@@ -134,7 +141,7 @@ function fmtDuration(secs) {
 
 // ── File download (fetch-as-blob so the Bearer token works) ──────────────────
 async function downloadFile(jobId, filename, btnEl) {
-  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner"></span>'; }
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-[#2a2a2a] border-t-[#ff4444] rounded-full animate-spin align-middle"></span>'; }
   try {
     const res = await fetch(`/api/queue/${jobId}/file`, {
       headers: { Authorization: `Bearer ${getToken()}` },

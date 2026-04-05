@@ -3,94 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>yt-Z — Settings</title>
-  <link rel="stylesheet" href="./assets/style.css">
+  <title>Streamline — Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0f0f0f',
+            surface: '#1a1a1a',
+            'surface-2': '#222222',
+            border: '#2a2a2a',
+            accent: '#ff4444',
+            'accent-hover': '#ff6666',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="bg-bg text-[#e0e0e0] font-sans">
 
-  <nav class="nav">
-    <a href="/index.html" class="nav-logo">yt-Z</a>
-    <div class="nav-links">
-      <a href="/index.html">Download</a>
-      <a href="/queue.html">Queue <span id="queue-badge" class="badge hidden">0</span></a>
-      <a href="/history.html">History</a>
-      <a href="/library.html">Library</a>
-      <a href="/settings.html">Settings</a>
+  <nav class="sticky top-0 z-50 h-14 bg-surface border-b border-border flex items-center px-6 gap-4">
+    <a href="/index.html" class="text-xl font-bold text-accent tracking-tight shrink-0">Streamline</a>
+    <div class="flex items-center gap-1">
+      <a href="/index.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Download</a>
+      <a href="/queue.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Queue <span id="queue-badge" class="hidden inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-accent text-white text-[10px] font-bold">0</span></a>
+      <a href="/history.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">History</a>
+      <a href="/library.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Library</a>
+      <a href="/settings.html" class="nav-link inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:text-[#e0e0e0] hover:bg-surface-2 transition">Settings</a>
     </div>
-    <div class="nav-spacer"></div>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    <div class="flex-1"></div>
+    <button class="bg-transparent text-[#888] hover:text-[#e0e0e0] border-0 px-3 py-1.5 text-sm cursor-pointer transition" onclick="logout()">Logout</button>
   </nav>
 
-  <main class="page">
+  <main class="max-w-[860px] mx-auto p-6">
 
     <!-- Cookie Upload -->
-    <div class="card">
-      <h2 class="card-title" style="margin-bottom:1rem">Cookie File</h2>
-      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
-        Upload a Netscape-format <code style="color:var(--text);background:var(--surface-2);padding:1px 5px;border-radius:4px">cookies.txt</code>
+    <div class="bg-surface border border-border rounded-lg p-6">
+      <h2 class="text-base font-semibold mb-3">Cookie File</h2>
+      <p class="text-[#888] text-sm mb-4">
+        Upload a Netscape-format <code class="text-[#e0e0e0] bg-surface-2 px-1.5 py-0.5 rounded text-xs">cookies.txt</code>
         exported from your browser (e.g. via the <em>Get cookies.txt LOCALLY</em> extension).
         Required for age-restricted or members-only content.
       </p>
 
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('cookie-file').click()">
+      <div class="border-2 border-dashed border-border rounded-lg p-8 text-center text-[#888] cursor-pointer hover:border-accent hover:text-[#e0e0e0] transition" id="drop-zone" onclick="document.getElementById('cookie-file').click()">
         <input type="file" id="cookie-file" accept=".txt" onchange="handleFileSelect(this.files[0])">
-        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
           <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v13M8 7l4-4 4 4"/>
         </svg>
-        <p id="drop-label">Drop cookies.txt here or click to browse</p>
+        <p id="drop-label" class="text-sm">Drop cookies.txt here or click to browse</p>
       </div>
 
-      <div id="upload-status" class="hidden mt-1"></div>
-      <button id="upload-btn" class="btn btn-primary mt-2 hidden" onclick="uploadCookies()">Upload Cookies</button>
+      <div id="upload-status" class="hidden mt-3"></div>
+      <button id="upload-btn" class="bg-accent hover:bg-accent-hover text-white font-medium px-5 py-2.5 rounded-lg cursor-pointer transition mt-4 hidden" onclick="uploadCookies()">Upload Cookies</button>
     </div>
 
     
     <!-- Presets -->
-    <div class="card mt-2">
-      <h2 class="card-title" style="margin-bottom:1rem">Presets</h2>
-      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
+    <div class="bg-surface border border-border rounded-lg p-6 mt-4">
+      <h2 class="text-base font-semibold mb-3">Presets</h2>
+      <p class="text-[#888] text-sm mb-4">
         Manage your download configuration presets.
       </p>
       
-      <div id="presets-list" style="margin-bottom: 1rem;">
+      <div id="presets-list" class="mb-4">
         <!-- Presets injected here -->
       </div>
       
-      <div class="flex-row" style="gap:.75rem">
-        
-        <button class="btn btn-secondary" onclick="exportPresets()">Export JSON</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">Import JSON</button>
+      <div class="flex flex-wrap gap-3">
+        <button class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2 rounded-lg text-sm cursor-pointer transition" onclick="exportPresets()">Export JSON</button>
+        <button class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2 rounded-lg text-sm cursor-pointer transition" onclick="document.getElementById('import-file').click()">Import JSON</button>
         <input type="file" id="import-file" accept=".json" class="hidden" onchange="importPresets(this.files[0])">
-
       </div>
     </div>
 
     <!-- YouTube Bookmarklet -->
-    <div class="card mt-2">
-      <h2 class="card-title" style="margin-bottom:.5rem">YouTube Cookie Sync</h2>
-      <p class="text-muted" style="font-size:.9rem;margin-bottom:1rem">
+    <div class="bg-surface border border-border rounded-lg p-6 mt-4">
+      <h2 class="text-base font-semibold mb-2">YouTube Cookie Sync</h2>
+      <p class="text-[#888] text-sm mb-4">
         Drag the button below to your bookmarks bar. Then, while logged into YouTube, click the
         bookmarklet to sync your cookies instantly — no manual export needed.
       </p>
 
-      <div class="flex-row" style="flex-wrap:wrap;gap:.75rem">
-        <a id="bookmarklet-link" class="btn btn-secondary" href="#" title="Drag to bookmarks bar">
+      <div class="flex flex-wrap gap-3">
+        <a id="bookmarklet-link" class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2 rounded-lg text-sm inline-flex items-center gap-2 no-underline transition" href="#" title="Drag to bookmarks bar">
           🔖 yt-Z Cookie Sync
         </a>
-        <button class="btn btn-secondary" onclick="copyBookmarklet()">Copy as JS</button>
+        <button class="bg-surface-2 text-[#e0e0e0] border border-border hover:border-[#888] px-4 py-2 rounded-lg text-sm cursor-pointer transition" onclick="copyBookmarklet()">Copy as JS</button>
       </div>
 
-      <p class="text-muted mt-1" style="font-size:.8rem">
+      <p class="text-[#888] text-xs mt-3">
         ⚠ Bookmarklet only captures cookies visible to JavaScript (not HttpOnly). For full coverage, use the file upload above.
       </p>
 
-      <div class="code-block mt-2" id="bookmarklet-code"></div>
+      <div class="bg-[#111] border border-border rounded-lg p-4 font-mono text-xs text-[#888] break-all whitespace-pre-wrap max-h-[120px] overflow-y-auto mt-4" id="bookmarklet-code"></div>
     </div>
 
     <!-- Account -->
-    <div class="card mt-2">
-      <h2 class="card-title" style="margin-bottom:1rem">Account</h2>
-      <button class="btn btn-danger" onclick="logout()">Sign Out</button>
+    <div class="bg-surface border border-border rounded-lg p-6 mt-4">
+      <h2 class="text-base font-semibold mb-3">Account</h2>
+      <button class="text-[#ef4444] border border-[#ef4444] hover:bg-[#ef4444] hover:text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition" onclick="logout()">Sign Out</button>
     </div>
 
   </main>
@@ -109,11 +123,11 @@
     // ── Drag & drop ────────────────────────────────────────────────────────────
     function setupDropZone() {
       const zone = document.getElementById('drop-zone');
-      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('border-accent', 'text-[#e0e0e0]'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('border-accent', 'text-[#e0e0e0]'));
       zone.addEventListener('drop', e => {
         e.preventDefault();
-        zone.classList.remove('drag-over');
+        zone.classList.remove('border-accent', 'text-[#e0e0e0]');
         const file = e.dataTransfer.files[0];
         if (file) handleFileSelect(file);
       });
@@ -132,19 +146,19 @@
       const btn = document.getElementById('upload-btn');
       const status = document.getElementById('upload-status');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Uploading…';
+      btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin align-middle"></span> Uploading…';
       const fd = new FormData();
       fd.append('file', _selectedFile);
       try {
         await apiUpload('/settings/cookies/upload', fd);
-        status.innerHTML = '<span style="color:var(--success)">✓ Cookies uploaded successfully</span>';
+        status.innerHTML = '<span class="text-[#22c55e]">✓ Cookies uploaded successfully</span>';
         status.classList.remove('hidden');
         toast('Cookies uploaded!', 'success');
         _selectedFile = null;
         btn.classList.add('hidden');
         document.getElementById('drop-label').textContent = 'Drop cookies.txt here or click to browse';
       } catch (e) {
-        status.innerHTML = `<span class="error-msg">${escHtml(e.message)}</span>`;
+        status.innerHTML = `<span class="text-[#ef4444]">${escHtml(e.message)}</span>`;
         status.classList.remove('hidden');
         toast(e.message, 'error');
       } finally {
@@ -190,15 +204,15 @@
         const presets = await api('/presets');
         const list = document.getElementById('presets-list');
         if (presets.length === 0) {
-          list.innerHTML = '<p class="text-muted" style="font-size:0.9rem">No presets found.</p>';
+          list.innerHTML = '<p class="text-[#888] text-sm">No presets found.</p>';
           return;
         }
         list.innerHTML = presets.map(p => `
-          <div class="flex-row" style="justify-content:space-between; padding:0.5rem; background:var(--surface-2); border-radius:4px; margin-bottom:0.5rem;">
-            <span>${escHtml(p.name)}</span>
-            <div class="flex-row" style="gap:0.5rem;">
-              <button class="btn btn-ghost btn-sm" onclick="setDefaultPreset(${p.id})">Set Default</button>
-              <button class="btn btn-danger btn-sm" onclick="deletePreset(${p.id})">Delete</button>
+          <div class="flex items-center justify-between gap-3 p-2 bg-surface-2 rounded-lg mb-2">
+            <span class="text-sm">${escHtml(p.name)}</span>
+            <div class="flex items-center gap-2">
+              <button class="text-[#888] hover:text-[#e0e0e0] bg-transparent border-0 px-2 py-1 text-xs cursor-pointer transition" onclick="setDefaultPreset(${p.id})">Set Default</button>
+              <button class="text-[#ef4444] hover:bg-[#ef4444] hover:text-white border border-transparent hover:border-[#ef4444] px-2 py-1 rounded text-xs transition cursor-pointer" onclick="deletePreset(${p.id})">Delete</button>
             </div>
           </div>
         `).join('');
@@ -231,10 +245,10 @@
       try {
         const presets = await api('/presets/export');
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
-        const dlAnchorElem = document.createElement('a');
-        dlAnchorElem.setAttribute("href",     dataStr     );
-        dlAnchorElem.setAttribute("download", "yt-z-presets.json");
-        dlAnchorElem.click();
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href",     dataStr     );
+        dlAnchor.setAttribute("download", "yt-z-presets.json");
+        dlAnchor.click();
       } catch (e) {
         toast('Failed to export presets', 'error');
       }

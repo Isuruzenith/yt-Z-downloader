@@ -35,6 +35,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
-.agent/implementationplan.md
-.agent/PRD.md
-.agent/yt-dlp.md
+agent/AGENT_PROMPT_Streamline.md
+agent/PRD_Streamline.md
+AGENTS.md
+.agents
+
